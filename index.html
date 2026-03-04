@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v2.6</title>
+<title>Rutas Comerciales PRO v2.7 - Iconos Restaurados</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -87,11 +87,24 @@ const coleccionClientes = collection(db,"clientes");
 const coleccionRutas = collection(db,"rutas");
 
 let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRouteClients=[];
-let editingClientId = null, currentStartOption = "gps";
+let currentStartOption = "gps";
 
+// ICONOS PERSONALIZADOS RESTAURADOS
 const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
+const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[38,38], iconAnchor:[19,38] });
+const iconHotel = new L.Icon({ 
+    iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), 
+    iconSize:[38,38], iconAnchor:[19,38] 
+});
 const iconPin = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[32,32], iconAnchor:[16,32] });
 const iconUser = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[40,40], iconAnchor:[20,40] });
+
+function getClientIcon(cliente){
+  const text=(cliente.notes||"").toLowerCase();
+  if(text.includes("comida")||text.includes("bar")||text.includes("restaurante")) return iconFood;
+  if(text.includes("hotel")||text.includes("hostal")||text.includes("dormir")) return iconHotel;
+  return iconNormal;
+}
 
 let map = L.map('map').setView([40.4168,-3.7038],12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -124,8 +137,13 @@ function renderClientes(){
         div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div><b>${c.name}</b><br><small>${c.address}</small></div></div>`;
         container.appendChild(div);
         if(c.lat && c.lng){ 
-            let m = L.marker([c.lat,c.lng], {icon: iconNormal}).addTo(map).bindPopup(c.name);
-            m.on('click', () => { const cb = document.getElementById('c'+i); cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : iconNormal); });
+            const defaultIcon = getClientIcon(c);
+            let m = L.marker([c.lat,c.lng], {icon: defaultIcon}).addTo(map).bindPopup(c.name);
+            m.on('click', () => { 
+                const cb = document.getElementById('c'+i); 
+                cb.checked = !cb.checked; 
+                m.setIcon(cb.checked ? iconPin : defaultIcon); 
+            });
             markers.push(m);
         }
     }); 
@@ -147,9 +165,11 @@ window.createRoute=async function(isLoading = false){
     currentStartOption = document.getElementById('startOption').value;
     let sLat, sLng;
     if(currentStartOption==="gps"){ 
-        const p=await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j)); sLat=p.coords.latitude; sLng=p.coords.longitude;
+        try {
+            const p=await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j)); sLat=p.coords.latitude; sLng=p.coords.longitude;
+        } catch(e) { return alert("Error GPS"); }
     } else { 
-        let ad=document.getElementById('startAddress').value.trim(); const c=await geocode(ad); sLat=c.lat; sLng=c.lng; 
+        let ad=document.getElementById('startAddress').value.trim(); const c=await geocode(ad); if(!c) return alert("Salida no encontrada"); sLat=c.lat; sLng=c.lng; 
     }
     const inputCoords = [[sLat,sLng],...sel.map(c=>[c.lat,c.lng])];
     const strCoords = inputCoords.map(c => `${c[1]},${c[0]}`).join(';');
@@ -171,7 +191,13 @@ window.createRoute=async function(isLoading = false){
 window.loadRoute=async function(id){ 
     const sn=await getDocs(coleccionRutas); const rd=sn.docs.find(d=>d.id===id); if(!rd)return;
     const d=rd.data(); 
-    clients.forEach((c, i) => { const cb = document.getElementById('c'+i); if(cb) { cb.checked = d.clients.includes(c.id); markers[i].setIcon(cb.checked ? iconPin : iconNormal); } });
+    clients.forEach((c, i) => { 
+        const cb = document.getElementById('c'+i); 
+        if(cb) { 
+            cb.checked = d.clients.includes(c.id); 
+            markers[i].setIcon(cb.checked ? iconPin : getClientIcon(c)); 
+        } 
+    });
     document.getElementById('startOption').value = d.mode || "gps";
     document.getElementById('routeDate').value = d.date || "";
     window.createRoute(true);

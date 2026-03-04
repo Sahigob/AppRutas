@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v2.7 - Iconos Restaurados</title>
+<title>Rutas Comerciales PRO v2.8 - Edición Restaurada</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -20,8 +20,10 @@ button:hover { background: var(--primary-dark); }
 #btnRutaOrdenEstricto { background-color: #ffc107; color: #212529; border: 2px solid #e0a800; }
 .smallBtn { padding:6px 12px; font-size:12px; margin: 4px 2px; width: auto; display: inline-flex; }
 .deleteBtn { background:#ef4444; }
+.saveBtn { background: #22c55e; }
 input, select, textarea { width:100%; margin:8px 0; padding:12px; border-radius:10px; border:1px solid var(--border); box-sizing: border-box; font-size: 14px; }
 .client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; }
+.edit-mode { border: 2px solid var(--primary); background: #f0f9ff; }
 .stats-badge { background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
 input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px; cursor: pointer; }
 .routeItem { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; background:#f1f5f9; padding:8px 12px; border-radius:10px; border:1px solid #e2e8f0; }
@@ -87,15 +89,13 @@ const coleccionClientes = collection(db,"clientes");
 const coleccionRutas = collection(db,"rutas");
 
 let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRouteClients=[];
+let editingClientId = null;
 let currentStartOption = "gps";
 
-// ICONOS PERSONALIZADOS RESTAURADOS
+// ICONOS
 const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
 const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[38,38], iconAnchor:[19,38] });
-const iconHotel = new L.Icon({ 
-    iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), 
-    iconSize:[38,38], iconAnchor:[19,38] 
-});
+const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[38,38], iconAnchor:[19,38] });
 const iconPin = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[32,32], iconAnchor:[16,32] });
 const iconUser = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[40,40], iconAnchor:[20,40] });
 
@@ -129,20 +129,38 @@ async function cargarRutas(){
     });
 }
 
+// RENDERIZADO CON MODO EDICIÓN
 function renderClientes(){ 
     const container=document.getElementById('clientList'); container.innerHTML=""; 
     markers.forEach(m=>map.removeLayer(m)); markers=[]; 
     clients.forEach((c,i)=>{ 
         let div=document.createElement('div'); div.className='client'; 
-        div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div><b>${c.name}</b><br><small>${c.address}</small></div></div>`;
+        
+        if(editingClientId === c.id) {
+            div.classList.add('edit-mode');
+            div.innerHTML = `
+                <input id="edit_name" value="${c.name||''}" placeholder="Nombre" />
+                <input id="edit_address" value="${c.address||''}" placeholder="Dirección" />
+                <textarea id="edit_notes" rows="2">${c.notes||''}</textarea>
+                <div style="display:flex; gap:8px; margin-top:8px">
+                    <button class="smallBtn saveBtn" onclick="saveEditClient('${c.id}')">💾 Guardar</button>
+                    <button class="smallBtn" style="background:#64748b" onclick="cancelEdit()">❌ Cancelar</button>
+                </div>`;
+        } else {
+            div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div style="flex:1"><b>${c.name}</b><br><small>${c.address}</small></div></div>
+                <div style="margin-top:8px">
+                    <button class="smallBtn" onclick='editClient("${c.id}")'>✏️ Editar</button>
+                    <button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️ Borrar</button>
+                </div>`;
+        }
+        
         container.appendChild(div);
         if(c.lat && c.lng){ 
             const defaultIcon = getClientIcon(c);
             let m = L.marker([c.lat,c.lng], {icon: defaultIcon}).addTo(map).bindPopup(c.name);
             m.on('click', () => { 
                 const cb = document.getElementById('c'+i); 
-                cb.checked = !cb.checked; 
-                m.setIcon(cb.checked ? iconPin : defaultIcon); 
+                if(cb) { cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : defaultIcon); }
             });
             markers.push(m);
         }
@@ -150,24 +168,44 @@ function renderClientes(){
     document.getElementById('stats').innerHTML=clients.length; 
 }
 
-window.deleteRoute=async function(id){ if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
+// FUNCIONES DE EDICIÓN
+window.editClient = function(id) { editingClientId = id; renderClientes(); }
+window.cancelEdit = function() { editingClientId = null; renderClientes(); }
+window.saveEditClient = async function(id) {
+    const n = document.getElementById('edit_name').value.trim();
+    const a = document.getElementById('edit_address').value.trim();
+    const nt = document.getElementById('edit_notes').value.trim();
+    if(!n) return alert("El nombre es obligatorio");
+    
+    try {
+        const co = await geocode(a);
+        const updateData = { name: n, address: a, notes: nt };
+        if(co) { updateData.lat = co.lat; updateData.lng = co.lng; }
+        
+        await updateDoc(doc(db, "clientes", id), updateData);
+        editingClientId = null;
+        cargarClientes();
+    } catch(e) { alert("Error al actualizar: " + e.message); }
+}
 
-window.addClient=async function(){ 
+window.deleteClient = async function(id) { if(confirm("¿Borrar cliente?")) { await deleteDoc(doc(db,"clientes",id)); cargarClientes(); } };
+window.deleteRoute = async function(id) { if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
+
+window.addClient = async function() { 
     const name=document.getElementById('name').value.trim(), address=document.getElementById('address').value.trim();
+    if(!name) return alert("Pon nombre");
     const co=await geocode(address); if(!co) return alert("No encontrada");
-    await addDoc(coleccionClientes,{name,address,lat:co.lat,lng:co.lng,notes:document.getElementById('notes').value}); 
+    await addDoc(coleccionClientes,{name,address,lat:co.lat,lng:co.lon || co.lng,notes:document.getElementById('notes').value}); 
     cargarClientes();
 }
 
-window.createRoute=async function(isLoading = false){ 
+window.createRoute = async function(isLoading = false){ 
     let sel=clients.filter((c,i)=>document.getElementById('c'+i)?.checked); 
     if(sel.length<1) return alert("Selecciona clientes"); 
     currentStartOption = document.getElementById('startOption').value;
     let sLat, sLng;
     if(currentStartOption==="gps"){ 
-        try {
-            const p=await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j)); sLat=p.coords.latitude; sLng=p.coords.longitude;
-        } catch(e) { return alert("Error GPS"); }
+        try { const p=await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j)); sLat=p.coords.latitude; sLng=p.coords.longitude; } catch(e) { return alert("Error GPS"); }
     } else { 
         let ad=document.getElementById('startAddress').value.trim(); const c=await geocode(ad); if(!c) return alert("Salida no encontrada"); sLat=c.lat; sLng=c.lng; 
     }
@@ -188,7 +226,7 @@ window.createRoute=async function(isLoading = false){
     } catch(e) { console.log(e); }
 }
 
-window.loadRoute=async function(id){ 
+window.loadRoute = async function(id){ 
     const sn=await getDocs(coleccionRutas); const rd=sn.docs.find(d=>d.id===id); if(!rd)return;
     const d=rd.data(); 
     clients.forEach((c, i) => { 

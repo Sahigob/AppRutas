@@ -2,19 +2,12 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v2.5 - Final</title>
+<title>Rutas Comerciales PRO v2.6</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 <style>
-:root {
-  --primary: #0ea5e9;
-  --primary-dark: #0284c7;
-  --bg: #f8fafc;
-  --card-bg: #ffffff;
-  --text: #1e293b;
-  --border: #e2e8f0;
-}
+:root { --primary: #0ea5e9; --primary-dark: #0284c7; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; }
 body { margin:0; font-family: 'Segoe UI', system-ui, sans-serif; display:flex; flex-direction: row; height:100vh; background: var(--bg); color: var(--text); }
 #map { flex:1; height: 100%; z-index: 1; }
 #panel { width:400px; padding:24px; overflow-y:auto; background: var(--card-bg); border-left: 1px solid var(--border); box-sizing: border-box; box-shadow: -4px 0 15px rgba(0,0,0,0.05); z-index: 10; }
@@ -24,19 +17,14 @@ h3::before { content: ''; width: 4px; height: 18px; background: var(--primary); 
 .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
 button { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:none; background: var(--primary); color:white; font-weight:600; cursor:pointer; font-size: 14px; transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
 button:hover { background: var(--primary-dark); }
-button:active { transform: scale(0.98); }
 #btnRutaOrdenEstricto { background-color: #ffc107; color: #212529; border: 2px solid #e0a800; }
 .smallBtn { padding:6px 12px; font-size:12px; margin: 4px 2px; width: auto; display: inline-flex; }
 .deleteBtn { background:#ef4444; }
-.saveBtn { background: #22c55e; }
 input, select, textarea { width:100%; margin:8px 0; padding:12px; border-radius:10px; border:1px solid var(--border); box-sizing: border-box; font-size: 14px; }
 .client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; }
-.edit-mode { border: 2px solid var(--primary); background: #f0f9ff; }
 .stats-badge { background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
-label { font-weight: 600; font-size: 13px; margin-bottom: 4px; display: block; }
 input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px; cursor: pointer; }
 .routeItem { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; background:#f1f5f9; padding:8px 12px; border-radius:10px; border:1px solid #e2e8f0; }
-.debug-box { background: #1e293b; color: #38bdf8; font-family: monospace; padding: 10px; border-radius: 8px; font-size: 11px; margin-top: 10px; white-space: pre-wrap; display: none; }
 </style>
 </head>
 <body>
@@ -56,10 +44,6 @@ input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px;
     <input id="name" placeholder="Nombre cliente" />
     <input id="address" placeholder="Dirección manual" />
     <textarea id="notes" placeholder="Notas (ej: Hotel, Restaurante...)" rows="2"></textarea>
-    <div style="display:flex; gap:8px">
-        <input id="lat" placeholder="Latitud" />
-        <input id="lng" placeholder="Longitud" />
-    </div>
     <button id="btnAddClient">➕ Guardar cliente</button>
   </div>
 
@@ -74,7 +58,6 @@ input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px;
     </select>
     <input id="startAddress" placeholder="Dirección de salida" style="display:none"/>
     <button id="btnCreateRoute">🧭 Crear ruta</button>
-    <div id="debugOrder" class="debug-box"></div>
     <div id="routeList"></div>
   </div>
 
@@ -107,17 +90,8 @@ let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRo
 let editingClientId = null, currentStartOption = "gps";
 
 const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
-const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[38,38], iconAnchor:[19,38] });
-const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[38,38], iconAnchor:[19,38] });
 const iconPin = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[32,32], iconAnchor:[16,32] });
 const iconUser = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[40,40], iconAnchor:[20,40] });
-
-function getClientIcon(cliente){
-  const text=(cliente.notes||"").toLowerCase();
-  if(text.includes("comida")||text.includes("bar")||text.includes("restaurante")) return iconFood;
-  if(text.includes("hotel")||text.includes("hostal")||text.includes("dormir")) return iconHotel;
-  return iconNormal;
-}
 
 let map = L.map('map').setView([40.4168,-3.7038],12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -137,11 +111,7 @@ async function cargarRutas(){
     snapshot.docs.forEach(docSnap => {
         const r = docSnap.data();
         let div=document.createElement('div'); div.className="routeItem";
-        div.innerHTML=`<span>📅 ${r.date || 'Sin fecha'}</span> 
-            <div>
-                <button class="smallBtn" onclick="loadRoute('${docSnap.id}')">👁️ Ver</button>
-                <button class="smallBtn deleteBtn" onclick="deleteRoute('${docSnap.id}')">🗑️</button>
-            </div>`;
+        div.innerHTML=`<span>📅 ${r.date || 'Sin fecha'}</span><div><button class="smallBtn" onclick="loadRoute('${docSnap.id}')">👁️</button><button class="smallBtn deleteBtn" onclick="deleteRoute('${docSnap.id}')">🗑️</button></div>`;
         container.appendChild(div);
     });
 }
@@ -151,43 +121,26 @@ function renderClientes(){
     markers.forEach(m=>map.removeLayer(m)); markers=[]; 
     clients.forEach((c,i)=>{ 
         let div=document.createElement('div'); div.className='client'; 
-        if(editingClientId === c.id) {
-            div.classList.add('edit-mode');
-            div.innerHTML = `<input id="edit_name" value="${c.name||''}" /><input id="edit_address" value="${c.address||''}" /><textarea id="edit_notes">${c.notes||''}</textarea><div style="display:flex; gap:8px"><button class="smallBtn saveBtn" onclick="saveEditClient('${c.id}')">💾</button><button class="smallBtn" onclick="cancelEdit()">❌</button></div>`;
-        } else {
-            div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}" data-id="${c.id}"> <div><b>${c.name}</b><br><small>${c.address||'Sin dirección'}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick='editClient("${c.id}")'>✏️</button><button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️</button></div>`;
-        }
+        div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div><b>${c.name}</b><br><small>${c.address}</small></div></div>`;
         container.appendChild(div);
         if(c.lat && c.lng){ 
-            const defaultIcon = getClientIcon(c);
-            let m = L.marker([c.lat,c.lng], {icon: defaultIcon}).addTo(map).bindPopup(c.name);
-            m.on('click', () => { const cb = document.getElementById('c'+i); cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : defaultIcon); });
+            let m = L.marker([c.lat,c.lng], {icon: iconNormal}).addTo(map).bindPopup(c.name);
+            m.on('click', () => { const cb = document.getElementById('c'+i); cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : iconNormal); });
             markers.push(m);
         }
     }); 
     document.getElementById('stats').innerHTML=clients.length; 
 }
 
-window.editClient=function(id){ editingClientId = id; renderClientes(); }
-window.cancelEdit=function(){ editingClientId = null; renderClientes(); }
-window.saveEditClient=async function(id){
-    const n = document.getElementById('edit_name').value, a = document.getElementById('edit_address').value, nt = document.getElementById('edit_notes').value;
-    await updateDoc(doc(db,"clientes",id),{name:n, address:a, notes:nt});
-    editingClientId = null; cargarClientes();
-}
-
-window.deleteClient=async function(id){ if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"clientes",id)); cargarClientes(); } };
 window.deleteRoute=async function(id){ if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
 
 window.addClient=async function(){ 
-    const name=document.getElementById('name').value.trim(), address=document.getElementById('address').value.trim(), notes=document.getElementById('notes').value.trim();
-    if(!name) return alert("Pon nombre");
+    const name=document.getElementById('name').value.trim(), address=document.getElementById('address').value.trim();
     const co=await geocode(address); if(!co) return alert("No encontrada");
-    await addDoc(coleccionClientes,{name,address,lat:co.lat,lng:co.lng,notes}); 
+    await addDoc(coleccionClientes,{name,address,lat:co.lat,lng:co.lng,notes:document.getElementById('notes').value}); 
     cargarClientes();
 }
 
-// CORRECCIÓN DUPLICADOS: isLoading controla si se guarda en Firebase
 window.createRoute=async function(isLoading = false){ 
     let sel=clients.filter((c,i)=>document.getElementById('c'+i)?.checked); 
     if(sel.length<1) return alert("Selecciona clientes"); 
@@ -210,10 +163,7 @@ window.createRoute=async function(isLoading = false){
             routeLine=L.geoJSON(data.trips[0].geometry,{style:{color:'#0ea5e9',weight:5}}).addTo(map); 
             map.fitBounds(routeLine.getBounds());
             lastRouteCoords.slice(1).forEach(c=>redMarkers.push(L.circleMarker(c,{radius:6,color:'red',fillOpacity:1}).addTo(map)));
-            if(!isLoading) {
-                await addDoc(coleccionRutas,{date:document.getElementById('routeDate').value || "Sin fecha", clients:sel.map(c=>c.id), start:{lat:sLat,lng:sLng}, mode:currentStartOption});
-                cargarRutas();
-            }
+            if(!isLoading) { await addDoc(coleccionRutas,{date:document.getElementById('routeDate').value || "Sin fecha", clients:sel.map(c=>c.id), start:{lat:sLat,lng:sLng}, mode:currentStartOption}); cargarRutas(); }
         }
     } catch(e) { console.log(e); }
 }
@@ -221,16 +171,12 @@ window.createRoute=async function(isLoading = false){
 window.loadRoute=async function(id){ 
     const sn=await getDocs(coleccionRutas); const rd=sn.docs.find(d=>d.id===id); if(!rd)return;
     const d=rd.data(); 
-    clients.forEach((c, i) => { 
-        const cb = document.getElementById('c'+i); 
-        if(cb) { cb.checked = d.clients.includes(c.id); markers[i].setIcon(cb.checked ? iconPin : getClientIcon(c)); }
-    });
+    clients.forEach((c, i) => { const cb = document.getElementById('c'+i); if(cb) { cb.checked = d.clients.includes(c.id); markers[i].setIcon(cb.checked ? iconPin : iconNormal); } });
     document.getElementById('startOption').value = d.mode || "gps";
     document.getElementById('routeDate').value = d.date || "";
-    window.createRoute(true); // Evita duplicar al cargar
+    window.createRoute(true);
 }
 
-// NAVEGACIÓN PRECISA: Texto > Coordenadas
 window.enviarRutaGoogleOrdenEstricto = function() {
     if (lastRouteCoords.length < 2) return alert("Crea una ruta azul primero");
     let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
@@ -240,18 +186,14 @@ window.enviarRutaGoogleOrdenEstricto = function() {
     window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, '_blank');
 }
 
-window.openInGoogleMaps = function() {
-    window.enviarRutaGoogleOrdenEstricto(); // Usamos la misma lógica precisa para ambos
-}
-
-window.openInWaze = function() {
-    if(lastRouteCoords.length < 2) return alert("Crea ruta");
-    const dest = lastRouteCoords[lastRouteCoords.length - 1];
-    window.open(`https://waze.com/ul?ll=${dest[0]},${dest[1]}&navigate=yes`, '_blank');
-}
+window.openInGoogleMaps = function() { window.enviarRutaGoogleOrdenEstricto(); }
 
 window.login = async function() { 
-    try { await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); cargarClientes(); cargarRutas(); showUserPosition(); } catch(e) { alert(e.message); }
+    try { 
+        await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); 
+        alert("✅ Login correcto. Cargando tus clientes y rutas..."); 
+        cargarClientes(); cargarRutas(); showUserPosition(); 
+    } catch(e) { alert("❌ Error: " + e.message); }
 }
 
 let userMarker = null;
@@ -270,7 +212,6 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('btnCreateRoute').addEventListener('click',() => window.createRoute(false));
     document.getElementById('btnRutaOrdenEstricto').addEventListener('click',window.enviarRutaGoogleOrdenEstricto);
     document.getElementById('btnGoogleMaps').addEventListener('click',window.openInGoogleMaps);
-    document.getElementById('btnWaze').addEventListener('click',window.openInWaze);
     document.getElementById('btnClearRoute').addEventListener('click',()=>{ if(routeLine)map.removeLayer(routeLine); redMarkers.forEach(m=>map.removeLayer(m)); });
     document.getElementById('startOption').addEventListener('change',e=>document.getElementById('startAddress').style.display=e.target.value==="manual"?"block":"none");
     showUserPosition();

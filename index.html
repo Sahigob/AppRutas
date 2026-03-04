@@ -384,7 +384,7 @@ async function showUserPosition() {
     } catch(e) { console.warn("No se pudo obtener la ubicación: ", e); }
 }
 
-// MODIFICACIÓN 2: DOMContentLoaded actualizado (sin llamadas automáticas a cargar datos)
+// MODIFICACIÓN 2: DOMContentLoaded actualizado (sin llamadas automáticas)
 document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('btnLogin').addEventListener('click',window.login);
     document.getElementById('btnAddClient').addEventListener('click',window.addClient);
@@ -399,7 +399,6 @@ document.addEventListener("DOMContentLoaded",()=>{
     });
     document.getElementById('startOption').addEventListener('change',e=>document.getElementById('startAddress').style.display=e.target.value==="manual"?"block":"none");
     
-    // Las llamadas a cargarClientes() y cargarRutas() se han eliminado de aquí
     showUserPosition();
 });
 </script>

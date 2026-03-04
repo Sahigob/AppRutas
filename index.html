@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v2.4 - Edición Inline</title>
+<title>Rutas Comerciales PRO v2.4 - Precisión GPS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -330,25 +330,35 @@ window.loadRoute=async function(id){
     window.createRoute();
 }
 
+// CORRECCIÓN: Ahora envía COORDENADAS en lugar de texto para evitar errores de portal
 window.enviarRutaGoogleOrdenEstricto = function() {
     if (lastRouteCoords.length < 2) return alert("Crea una ruta azul primero");
+
     const origin = `${lastRouteCoords[0][0]},${lastRouteCoords[0][1]}`;
     const destination = `${lastRouteCoords[lastRouteCoords.length - 1][0]},${lastRouteCoords[lastRouteCoords.length - 1][1]}`;
+    
     let waypoints = "";
     if (lastRouteCoords.length > 2) {
+        // Unimos por coordenadas lat,lng separadas por |
         waypoints = lastRouteCoords.slice(1, -1).map(c => `${c[0]},${c[1]}`).join('|');
     }
+
+    // Usamos el formato de URL universal de Google para navegación por coordenadas
     const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${encodeURIComponent(waypoints)}&travelmode=driving`;
     window.open(url, '_blank');
 }
 
 window.openInGoogleMaps=function(){ 
     if(lastRouteCoords.length<2) return alert("Crea o carga una ruta"); 
-    let origin = (currentStartOption === "gps") ? "" : lastRouteCoords[0].join(',');
+    
+    // Si es GPS usamos la ubicación actual del móvil al abrir Google, si no, la coordenada de inicio
+    let origin = (currentStartOption === "gps") ? "" : `${lastRouteCoords[0][0]},${lastRouteCoords[0][1]}`;
     let destCoord = lastRouteCoords[lastRouteCoords.length-1];
-    let destination = destCoord.join(',');
-    let waypoints = lastRouteCoords.slice(1,-1).map(c=>c.join(',')).join('|');
-    window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`,'_blank'); 
+    let destination = `${destCoord[0]},${destCoord[1]}`;
+    let waypoints = lastRouteCoords.slice(1,-1).map(c => `${c[0]},${c[1]}`).join('|');
+    
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${encodeURIComponent(waypoints)}&travelmode=driving`;
+    window.open(url, '_blank');
 }
 
 window.openInWaze = function() {
@@ -358,16 +368,13 @@ window.openInWaze = function() {
     window.open(url, '_blank');
 }
 
-// MODIFICACIÓN 1: Función window.login actualizada
 window.login = async function() { 
     try { 
         await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); 
         alert("Login OK"); 
-        
         await cargarClientes(); 
         await cargarRutas(); 
         if (typeof showUserPosition === "function") showUserPosition(); 
-        
     } catch(e) { 
         alert("Error: " + e.message); 
     }
@@ -384,7 +391,6 @@ async function showUserPosition() {
     } catch(e) { console.warn("No se pudo obtener la ubicación: ", e); }
 }
 
-// MODIFICACIÓN 2: DOMContentLoaded actualizado (sin llamadas automáticas)
 document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('btnLogin').addEventListener('click',window.login);
     document.getElementById('btnAddClient').addEventListener('click',window.addClient);

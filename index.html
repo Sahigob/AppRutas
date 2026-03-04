@@ -63,6 +63,195 @@ input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px;
 }
 
 .debug-box { background: #1e293b; color: #38bdf8; font-family: monospace; padding: 10px; border-radius: 8px; font-size: 11px; margin-top: 10px; white-space: pre-wrap; display: none; }
+
+:root {
+  --primary: #0a5273;       
+  --primary-dark: #073b52;
+  --bg: #f4f6f8;            
+  --card-bg: #ffffff;        
+  --text: #1f2937;           
+  --border: #d1d5db;         
+  --shadow: rgba(0,0,0,0.08);
+}
+
+body {
+  margin:0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+  display:flex; 
+  flex-direction: row; 
+  height:100vh; 
+  background: var(--bg); 
+}
+
+#map { flex:1; height: 100%; z-index: 1; }
+
+#panel {
+  width: 450px;
+  padding: 28px;
+  overflow-y: auto;
+  background: var(--card-bg);
+  border-left: 1px solid var(--border);
+  box-sizing: border-box;
+  box-shadow: -6px 0 20px var(--shadow);
+  position: relative;
+}
+
+#panel::before {
+  content: "🧭 Planner Comercial";
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 4px;
+}
+#panel::after {
+  content: "Gestión de visitas y fidelización de clientes";
+  display: block;
+  font-size: 0.85rem;
+  color: #4b5563;
+  margin-bottom: 16px;
+}
+
+h3 {
+  margin: 24px 0 12px 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary-dark);
+}
+h3::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 20px var(--shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px var(--shadow);
+}
+
+button {
+  width:100%;
+  padding:14px;
+  margin:10px 0;
+  border-radius:12px;
+  border:none;
+  background: var(--primary);
+  color:white;
+  font-weight:600;
+  cursor:pointer;
+  font-size: 14px;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+button:hover { background: var(--primary-dark); }
+button:active { transform: scale(0.97); }
+
+#btnRutaOrdenEstricto { background-color: #ffc107; color: #212529; border: 2px solid #e0a800; }
+#btnRutaOrdenEstricto:hover { background-color: #e0a800; }
+
+.smallBtn { padding:6px 14px; font-size:13px; margin: 4px 2px; width: auto; display: inline-flex; border-radius:10px; }
+.deleteBtn { background:#ef4444; color:white; }
+.deleteBtn:hover { background:#dc2626; }
+.saveBtn { background: #22c55e; color:white; }
+
+input, select, textarea {
+  width:100%;
+  margin:8px 0;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  box-sizing: border-box;
+  font-size: 14px;
+  transition: border 0.2s ease;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 6px var(--primary);
+}
+
+.client {
+  padding:12px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  margin-bottom: 8px;
+  border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.client:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px var(--shadow);
+}
+
+.edit-mode {
+  border: 2px solid var(--primary);
+  background: #f0f9ff;
+}
+
+.stats-badge {
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight:600;
+}
+
+.routeItem {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:8px;
+  font-size:13px;
+  background:#f9fafb;
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  transition: background 0.2s ease;
+}
+.routeItem:hover {
+  background: #f1f5f9;
+}
+
+label { font-weight: 600; font-size: 13px; margin-bottom: 4px; display: block; }
+
+input[type="checkbox"] { width: auto; transform: scale(1.3); margin-right: 12px; cursor: pointer; }
+
+.debug-box {
+  background: #1f2937;
+  color: #38bdf8;
+  font-family: monospace;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  margin-top: 10px;
+  white-space: pre-wrap;
+  display: none;
+}
+
+@media (max-width: 768px) { 
+  body { flex-direction: column; } 
+  #map { flex: none; height: 35vh; } 
+  #panel { width: 100%; flex: 1; border-left: none; border-top: 2px solid var(--border); }
+}
 </style>
 </head>
 <body>

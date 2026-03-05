@@ -1,275 +1,318 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8" />
-    <title>Rutas PRO - Versión Final Estable</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-    <style>
-        :root { --primary: #0ea5e9; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; }
-        body { margin:0; font-family: 'Segoe UI', sans-serif; display:flex; flex-direction: row; height:100vh; background: var(--bg); }
-        #map { flex:1; height: 100%; z-index: 1; }
-        #panel { width:400px; padding:20px; overflow-y:auto; background: var(--card-bg); border-left: 1px solid var(--border); box-sizing: border-box; z-index: 10; }
-        @media (max-width: 768px) { body { flex-direction: column; } #map { flex: none; height: 30vh; } #panel { width: 100%; flex: 1; } }
-        
-        .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 15px; }
-        h3 { margin: 0 0 10px 0; font-size: 1rem; color: var(--primary); display: flex; align-items: center; gap: 8px; }
-        input, textarea, select { width:100%; margin:5px 0; padding:10px; border-radius:8px; border:1px solid var(--border); box-sizing: border-box; }
-        
-        button { width:100%; padding:12px; margin:5px 0; border-radius:8px; border:none; background: var(--primary); color:white; font-weight:600; cursor:pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
-        .smallBtn { padding:5px 10px; font-size:11px; width: auto; display: inline-flex; margin: 2px; }
-        .deleteBtn { background:#ef4444; }
-        .saveBtn { background: #22c55e; }
-        
-        .client { padding:10px; border: 1px solid var(--border); margin-bottom: 5px; border-radius: 8px; cursor: pointer; }
-        .client-selected { background: #fee2e2 !important; border-color: #ef4444 !important; }
-        .edit-mode { border: 2px solid var(--primary); background: #f0f9ff; padding: 10px; border-radius: 10px; }
-        .hidden { display: none; }
-        input[type="checkbox"] { width: auto; transform: scale(1.2); margin-right: 10px; pointer-events: none; }
-    </style>
+<meta charset="utf-8" />
+<title>Rutas Comerciales PRO v3.6 - Multi-Usuario</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+<style>
+:root { --primary: #0ea5e9; --primary-dark: #0284c7; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; }
+body { margin:0; font-family: 'Segoe UI', system-ui, sans-serif; display:flex; flex-direction: row; height:100vh; background: var(--bg); color: var(--text); }
+#map { flex:1; height: 100%; z-index: 1; }
+#panel { width:400px; padding:24px; overflow-y:auto; background: var(--card-bg); border-left: 1px solid var(--border); box-sizing: border-box; box-shadow: -4px 0 15px rgba(0,0,0,0.05); z-index: 10; }
+@media (max-width: 768px) { body { flex-direction: column; } #map { flex: none; height: 35vh; } #panel { width: 100%; flex: 1; border-left: none; border-top: 2px solid var(--border); } }
+h3 { margin: 24px 0 12px 0; font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+h3::before { content: ''; width: 4px; height: 18px; background: var(--primary); border-radius: 4px; }
+.card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+button { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:none; background: var(--primary); color:white; font-weight:600; cursor:pointer; font-size: 14px; transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
+button:hover { background: var(--primary-dark); }
+#btnRutaOrdenEstricto { background-color: #ffc107; color: #212529; border: 2px solid #e0a800; }
+.smallBtn { padding:6px 12px; font-size:12px; margin: 4px 2px; width: auto; display: inline-flex; }
+.deleteBtn { background:#ef4444; }
+.saveBtn { background: #22c55e; }
+input, select, textarea { width:100%; margin:8px 0; padding:12px; border-radius:10px; border:1px solid var(--border); box-sizing: border-box; font-size: 14px; }
+.coord-row { display: flex; gap: 8px; }
+.client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; }
+.edit-mode { border: 2px solid var(--primary); background: #f0f9ff; }
+.stats-badge { background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
+input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px; cursor: pointer; }
+.routeItem { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; background:#f1f5f9; padding:8px 12px; border-radius:10px; border:1px solid #e2e8f0; }
+.hidden { display: none; }
+</style>
 </head>
 <body>
 
 <div id="map"></div>
 
 <div id="panel">
-    <div id="authSection" class="card">
-        <h3>🔐 Acceso</h3>
-        <input id="email" type="email" placeholder="Email" />
-        <input id="password" type="password" placeholder="Contraseña (mín. 6 caracteres)" />
-        <button id="btnLogin">Entrar o Crear Usuario</button>
+  <div id="authSection" class="card">
+    <h3>🔐 Acceso (Login/Registro)</h3>
+    <input id="email" placeholder="Correo electrónico" />
+    <input id="password" type="password" placeholder="Contraseña" />
+    <button id="btnLogin">Entrar o Registrarse</button>
+  </div>
+
+  <div id="mainSection" class="hidden">
+    <div style="display:flex; justify-content:space-between; align-items: center;">
+        <span id="userDisplay" style="font-size: 10px; color: grey;"></span>
+        <button id="btnLogout" class="deleteBtn smallBtn">Salir</button>
     </div>
 
-    <div id="mainSection" class="hidden">
-        <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items: center;">
-            <span id="userDisplay" style="font-size: 11px; color: #0ea5e9;"></span>
-            <button id="btnLogout" class="deleteBtn smallBtn">Salir</button>
-        </div>
-
-        <div class="card">
-            <h3>👥 Nuevo Cliente</h3>
-            <input id="name" placeholder="Nombre" />
-            <input id="address" placeholder="Dirección o vacío para GPS" />
-            <textarea id="notes" placeholder="Notas (Hotel, Comida...)" rows="1"></textarea>
-            <button id="btnAddClient" class="saveBtn">💾 Guardar Cliente</button>
-        </div>
-
-        <div class="card">
-            <h3>🧭 Ruta Azul</h3>
-            <input type="date" id="routeDate" />
-            <select id="startOption">
-                <option value="gps">📍 Salida: Mi GPS</option>
-                <option value="manual">✏️ Salida: Dirección manual</option>
-            </select>
-            <input id="startAddress" placeholder="Dirección de salida..." style="display:none"/>
-            <button id="btnCreateRoute">🧭 Dibujar Ruta</button>
-            <div id="routeHistoryList"></div>
-        </div>
-
-        <div class="card">
-            <h3>🚗 Abrir en Google Maps</h3>
-            <button id="btnRutaOrdenEstricto" style="background:#ffc107; color:black"><b>Google (Orden de mi Lista)</b></button>
-            <button id="btnGoogleOptimizado" style="background:#22c55e"><b>Google Optimizado</b></button>
-        </div>
-
-        <h3>📊 Mis Clientes (<span id="stats">0</span>)</h3>
-        <div id="clientList"></div>
+    <div class="card">
+      <h3>👥 Gestión de Cliente</h3>
+      <input id="name" placeholder="Nombre cliente" />
+      <input id="address" placeholder="Dirección manual (vacío para GPS)" />
+      <div class="coord-row">
+          <input id="manualLat" placeholder="Latitud" />
+          <input id="manualLng" placeholder="Longitud" />
+      </div>
+      <textarea id="notes" placeholder="Notas (Hotel, Restaurante...)" rows="2"></textarea>
+      <button id="btnAddClient">➕ Guardar cliente</button>
     </div>
+
+    <div class="card">
+      <h3>🧭 Planificador de Ruta</h3>
+      <label>Fecha:</label>
+      <input type="date" id="routeDate" />
+      <label>Salida:</label>
+      <select id="startOption">
+        <option value="gps">📍 Mi ubicación actual</option>
+        <option value="manual">✏️ Dirección manual</option>
+      </select>
+      <input id="startAddress" placeholder="Dirección de salida" style="display:none"/>
+      <button id="btnCreateRoute">🧭 Crear ruta</button>
+      <div id="routeList"></div>
+    </div>
+
+    <div class="card">
+      <h3>🚗 Navegación</h3>
+      <button id="btnRutaOrdenEstricto"><i class="fas fa-route"></i> Google (Orden de Lista)</button>
+      <button id="btnGoogleMaps" style="background: #22c55e;">🌐 Google (Optimizado)</button>
+      <button id="btnWaze" style="background: #1e40af;">🛣️ Abrir Waze</button>
+      <button id="btnClearRoute" style="background: #64748b;">🧹 Limpiar mapa</button>
+    </div>
+
+    <h3>📊 Clientes <span id="stats" class="stats-badge">0</span></h3>
+    <div id="clientList"></div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-auth.js";
 
-    const firebaseConfig = { 
-        apiKey: "AIzaSyByi9lTT4kN4YbD8cneKLmTm05RzCAgPhI", 
-        authDomain: "organizador-de-visitas-f10ad.firebaseapp.com", 
-        projectId: "organizador-de-visitas-f10ad", 
-        storageBucket: "organizador-de-visitas-f10ad.firebasestorage.app", 
-        messagingSenderId: "737024476908", 
-        appId: "1:737024476908:web:09cf2cc99ac0b7352f07c9" 
-    };
+// FIREBASE PROYECTO 2
+const firebaseConfig = { apiKey: "AIzaSyALty_4SfeZUg6B6_dbcOeZvGYpnu4gYsE", authDomain: "rutas-56f86.firebaseapp.com", projectId: "rutas-56f86", storageBucket: "rutas-56f86.appspot.com", messagingSenderId: "1026881492897", appId: "1:1026881492897:web:fcb315b53fcf5e40e3dde0" };
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRouteClients=[];
+let editingClientId = null;
+let currentStartOption = "gps";
 
-    let clients=[], markers=[], routeLine, lastRouteClients=[], editingClientId = null;
-    let map = L.map('map').setView([40, -3], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+// ICONOS PROYECTO 1
+const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
+const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[38,38], iconAnchor:[19,38] });
+const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[38,38], iconAnchor:[19,38] });
+const iconPin = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[32,32], iconAnchor:[16,32] });
+const iconUser = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[40,40], iconAnchor:[20,40] });
 
-    const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
-    const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[35,35], iconAnchor:[17,35] });
-    const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[35,35], iconAnchor:[17,35] });
-    const iconRed = new L.Icon({ iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png", shadowUrl:"https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
+function getClientIcon(cliente){
+  const text=(cliente.notes||"").toLowerCase();
+  if(text.includes("comida")||text.includes("bar")||text.includes("restaurante")) return iconFood;
+  if(text.includes("hotel")||text.includes("hostal")||text.includes("dormir")) return iconHotel;
+  return iconNormal;
+}
 
-    function getIconByNotes(notes) {
-        const n = (notes || "").toLowerCase();
-        if(n.includes("hotel")) return iconHotel;
-        if(n.includes("comida") || n.includes("restaurante")) return iconFood;
-        return iconNormal;
+let map = L.map('map').setView([40.4168,-3.7038],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+// ESCUCHADOR DE ESTADO DE USUARIO (MULTI-USUARIO)
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('mainSection').classList.remove('hidden');
+        document.getElementById('userDisplay').innerText = user.email;
+        cargarClientes();
+        cargarRutas();
+        showUserPosition();
+    } else {
+        document.getElementById('authSection').classList.remove('hidden');
+        document.getElementById('mainSection').classList.add('hidden');
     }
+});
 
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('mainSection').classList.remove('hidden');
-            document.getElementById('userDisplay').innerText = user.email;
-            cargarDatos();
-        } else {
-            document.getElementById('authSection').classList.remove('hidden');
-            document.getElementById('mainSection').classList.add('hidden');
-        }
+async function geocode(addr){ 
+    try {
+        let res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`); 
+        let data=await res.json(); 
+        return data.length>0 ? {lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon)} : null; 
+    } catch(e) { return null; }
+}
+
+async function cargarClientes(){ 
+    const q = query(collection(db, "clientes"), where("userId", "==", auth.currentUser.uid));
+    const snapshot = await getDocs(q); 
+    clients = snapshot.docs.map(d=>({...d.data(),id:d.id})).filter(c=>c.name); 
+    clients.sort((a,b)=>a.name.localeCompare(b.name)); 
+    renderClientes(); 
+}
+
+async function cargarRutas(){ 
+    const q = query(collection(db, "rutas"), where("userId", "==", auth.currentUser.uid));
+    const snapshot = await getDocs(q); 
+    const container = document.getElementById('routeList'); container.innerHTML=""; 
+    snapshot.docs.forEach(docSnap => {
+        const r = docSnap.data();
+        let div=document.createElement('div'); div.className="routeItem";
+        div.innerHTML=`<span>📅 ${r.date || 'Sin fecha'}</span><div><button class="smallBtn" onclick="loadRoute('${docSnap.id}')">👁️</button><button class="smallBtn deleteBtn" onclick="deleteRoute('${docSnap.id}')">🗑️</button></div>`;
+        container.appendChild(div);
     });
+}
 
-    // SISTEMA DE ACCESO DUAL (LOGIN O REGISTRO)
-    document.getElementById('btnLogin').onclick = async () => {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-        } catch (error) {
-            try {
-                await createUserWithEmailAndPassword(auth, email, password);
-                alert("Usuario nuevo creado.");
-            } catch (err2) { alert("Error: " + err2.message); }
+function renderClientes(){ 
+    const container=document.getElementById('clientList'); container.innerHTML=""; 
+    markers.forEach(m=>map.removeLayer(m)); markers=[]; 
+    clients.forEach((c,i)=>{ 
+        let div=document.createElement('div'); div.className='client'; 
+        if(editingClientId === c.id) {
+            div.classList.add('edit-mode');
+            div.innerHTML = `<input id="edit_name" value="${c.name||''}" /><input id="edit_address" value="${c.address||''}" /><textarea id="edit_notes">${c.notes||''}</textarea><div style="display:flex; gap:8px"><button class="smallBtn saveBtn" onclick="saveEditClient('${c.id}')">💾</button><button class="smallBtn" onclick="cancelEdit()">❌</button></div>`;
+        } else {
+            div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div style="flex:1"><b>${c.name}</b><br><small>${c.address || (c.lat?c.lat.toFixed(3)+','+c.lng.toFixed(3):'Sin dirección')}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick='editClient("${c.id}")'>✏️ Editar</button><button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️ Borrar</button></div>`;
         }
-    };
-
-    async function cargarDatos() {
-        const qC = query(collection(db, "clientes"), where("userId", "==", auth.currentUser.uid));
-        const snapC = await getDocs(qC);
-        clients = snapC.docs.map(d => ({...d.data(), id: d.id})).sort((a,b)=>a.name.localeCompare(b.name));
-        
-        const qR = query(collection(db, "rutas"), where("userId", "==", auth.currentUser.uid));
-        const snapR = await getDocs(qR);
-        const hist = document.getElementById('routeHistoryList');
-        hist.innerHTML = "";
-        snapR.forEach(d => {
-            const r = d.data();
-            let div = document.createElement('div');
-            div.style = "display:flex; justify-content:space-between; background:#f1f5f9; padding:5px; margin-top:5px; border-radius:5px; font-size:11px";
-            div.innerHTML = `<span>📅 ${r.date}</span><div><button class="smallBtn saveBtn" onclick="window.cargarRuta('${d.id}')">📂</button><button class="smallBtn deleteBtn" onclick="window.borrarRuta('${d.id}')">🗑️</button></div>`;
-            hist.appendChild(div);
-        });
-        renderClientes();
-    }
-
-    function renderClientes() {
-        const cont = document.getElementById('clientList'); cont.innerHTML = "";
-        markers.forEach(m => map.removeLayer(m)); markers = [];
-        clients.forEach((c, i) => {
-            let div = document.createElement('div'); div.id = 'div-c'+i;
-            if(editingClientId === c.id) {
-                div.className = 'edit-mode';
-                div.innerHTML = `
-                    <input id="ed_n" value="${c.name}">
-                    <input id="ed_a" value="${c.address||''}">
-                    <textarea id="ed_nt">${c.notes||''}</textarea>
-                    <button class="smallBtn saveBtn" onclick="window.saveEdit('${c.id}')">Guardar</button>
-                    <button class="smallBtn" onclick="window.cancelEdit()">X</button>`;
-            } else {
-                div.className = 'client';
-                div.onclick = (e) => { if(e.target.tagName !== 'BUTTON') window.toggle(i); };
-                div.innerHTML = `<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"><div><b>${c.name}</b><br><small>${c.address || 'GPS'}</small></div></div>
-                <button class="smallBtn" onclick="window.edit('${c.id}'); event.stopPropagation();">✏️</button>
-                <button class="smallBtn deleteBtn" onclick="window.del('${c.id}'); event.stopPropagation();">🗑️</button>`;
-            }
-            cont.appendChild(div);
-            let m = L.marker([c.lat, c.lng], {icon: getIconByNotes(c.notes)}).addTo(map).bindPopup(c.name);
-            m.on('click', (e) => { L.DomEvent.stopPropagation(e); window.toggle(i); });
+        container.appendChild(div);
+        if(c.lat && c.lng){ 
+            const defaultIcon = getClientIcon(c);
+            let m = L.marker([c.lat,c.lng], {icon: defaultIcon}).addTo(map).bindPopup(c.name);
+            m.on('click', () => { const cb = document.getElementById('c'+i); if(cb){ cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : defaultIcon); } });
             markers.push(m);
-        });
-        document.getElementById('stats').innerText = clients.length;
-    }
-
-    window.toggle = (i) => {
-        const cb = document.getElementById('c'+i);
-        cb.checked = !cb.checked;
-        document.getElementById('div-c'+i).classList.toggle('client-selected', cb.checked);
-        markers[i].setIcon(cb.checked ? iconRed : getIconByNotes(clients[i].notes));
-    };
-
-    // --- GOOGLE MAPS (LOGICA PROYECTO 1 REFORZADA) ---
-    window.abrirGoogle = (optimizado) => {
-        let lista = clients.filter((c,i) => document.getElementById('c'+i).checked);
-        if(optimizado && lastRouteClients.length > 0) lista = lastRouteClients;
-        if(lista.length === 0) return alert("Selecciona paradas");
-
-        let origin = (document.getElementById('startOption').value === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
-        let destObj = lista[lista.length - 1];
-        let destination = destObj.address ? encodeURIComponent(destObj.address) : `${destObj.lat},${destObj.lng}`;
-        let waypoints = lista.slice(0, -1).map(c => c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`).join('|');
-
-        // LA URL QUE SIEMPRE FUNCIONA (PROYECTO 1)
-        window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, '_blank');
-    };
-
-    window.addClient = async () => {
-        const n = document.getElementById('name').value, a = document.getElementById('address').value, nt = document.getElementById('notes').value;
-        if(!n) return;
-        let lat, lng;
-        try {
-            if(a) {
-                const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(a)}`);
-                const d = await r.json(); lat = parseFloat(d[0].lat); lng = parseFloat(d[0].lon);
-            } else {
-                const p = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej));
-                lat = p.coords.latitude; lng = p.coords.longitude;
-            }
-            await addDoc(collection(db, "clientes"), { name:n, address:a, lat, lng, notes:nt, userId: auth.currentUser.uid });
-            cargarDatos();
-        } catch(e) { alert("Error: Escribe una dirección válida o activa el GPS."); }
-    };
-
-    window.createRoute = async (isLoading = false) => {
-        let sel = clients.filter((c,i) => document.getElementById('c'+i).checked);
-        if(sel.length < 1) return;
-        const str = sel.map(c=>`${c.lng},${c.lat}`).join(';');
-        // OSRM para dibujo azul
-        const res = await fetch(`https://router.project-osrm.org/trip/v1/driving/${str}?overview=full&geometries=geojson`);
-        const data = await res.json();
-        if(data.trips) {
-            if(routeLine) map.removeLayer(routeLine);
-            routeLine = L.geoJSON(data.trips[0].geometry, {style: {color: '#0ea5e9', weight: 5}}).addTo(map);
-            if(!isLoading) {
-                await addDoc(collection(db, "rutas"), { userId: auth.currentUser.uid, date: document.getElementById('routeDate').value || "Hoy", clientIds: sel.map(c => c.id) });
-                cargarDatos();
-            }
         }
-    };
+    }); 
+    document.getElementById('stats').innerHTML=clients.length; 
+}
 
-    window.edit = (id) => { editingClientId = id; renderClientes(); };
-    window.cancelEdit = () => { editingClientId = null; renderClientes(); };
-    window.saveEdit = async (id) => {
-        await updateDoc(doc(db, "clientes", id), { 
-            name: document.getElementById('ed_n').value, 
-            address: document.getElementById('ed_a').value, 
-            notes: document.getElementById('ed_nt').value 
-        });
-        editingClientId = null; cargarDatos();
-    };
-    window.del = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"clientes",id)); cargarDatos(); } };
-    window.borrarRuta = async (id) => { if(confirm("¿Eliminar?")) { await deleteDoc(doc(db,"rutas",id)); cargarDatos(); } };
-    window.cargarRuta = async (id) => {
-        const snap = await getDocs(query(collection(db, "rutas"), where("userId", "==", auth.currentUser.uid)));
-        const r = snap.docs.find(d => d.id === id).data();
-        clients.forEach((c, i) => {
-            document.getElementById('c'+i).checked = r.clientIds.includes(c.id);
-            document.getElementById('div-c'+i).classList.toggle('client-selected', r.clientIds.includes(c.id));
-        });
-        window.createRoute(true);
-    };
+window.addClient = async function() { 
+    const inName=document.getElementById('name'), inAddr=document.getElementById('address'), inLat=document.getElementById('manualLat'), inLng=document.getElementById('manualLng'), inNotes=document.getElementById('notes');
+    const name=inName.value.trim(), address=inAddr.value.trim(), mLat=inLat.value.trim(), mLng=inLng.value.trim();
+    if(!name) return alert("El nombre es obligatorio");
+    let finalLat, finalLng;
+    if(mLat && mLng) { finalLat=parseFloat(mLat); finalLng=parseFloat(mLng); } 
+    else if(address) { 
+        const co=await geocode(address); 
+        if(!co) return alert("No encontrada"); finalLat=co.lat; finalLng=co.lng; 
+    } else {
+        try {
+            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
+            finalLat = pos.coords.latitude; finalLng = pos.coords.longitude;
+        } catch(e) { return alert("GPS necesario"); }
+    }
+    try {
+        await addDoc(collection(db, "clientes"), { name, address, lat: finalLat, lng: finalLng, notes: inNotes.value, userId: auth.currentUser.uid }); 
+        inName.value=""; inAddr.value=""; inLat.value=""; inLng.value=""; inNotes.value=""; inName.focus();
+        cargarClientes();
+    } catch(e) { alert("Error"); }
+}
 
-    document.getElementById('btnAddClient').onclick = window.addClient;
-    document.getElementById('btnCreateRoute').onclick = () => window.createRoute(false);
-    document.getElementById('btnRutaOrdenEstricto').onclick = () => window.abrirGoogle(false);
-    document.getElementById('btnGoogleOptimizado').onclick = () => window.abrirGoogle(true);
-    document.getElementById('startOption').onchange = (e) => document.getElementById('startAddress').style.display = e.target.value === "manual" ? "block" : "none";
-    document.getElementById('btnLogout').onclick = () => signOut(auth);
+window.editClient = function(id) { editingClientId = id; renderClientes(); }
+window.cancelEdit = function() { editingClientId = null; renderClientes(); }
+window.saveEditClient = async function(id) {
+    const n = document.getElementById('edit_name').value.trim(), a = document.getElementById('edit_address').value.trim(), nt = document.getElementById('edit_notes').value.trim();
+    try {
+        const co = await geocode(a);
+        const updateData = { name: n, address: a, notes: nt };
+        if(co) { updateData.lat = co.lat; updateData.lng = co.lng; }
+        await updateDoc(doc(db, "clientes", id), updateData);
+        editingClientId = null; cargarClientes();
+    } catch(e) { alert("Error"); }
+}
+
+window.deleteClient = async function(id) { if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"clientes",id)); cargarClientes(); } };
+window.deleteRoute = async function(id) { if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
+
+window.createRoute = async function(isLoading = false){ 
+    let sel=clients.filter((c,i)=>document.getElementById('c'+i)?.checked); 
+    if(sel.length<1) return alert("Selecciona clientes"); 
+    currentStartOption = document.getElementById('startOption').value;
+    let sLat, sLng;
+    if(currentStartOption==="gps"){ 
+        try { const p=await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j)); sLat=p.coords.latitude; sLng=p.coords.longitude; } catch(e) { return alert("Error GPS"); }
+    } else { 
+        let ad=document.getElementById('startAddress').value.trim(); const c=await geocode(ad); if(!c) return alert("Salida no encontrada"); sLat=c.lat; sLng=c.lng; 
+    }
+    const inputCoords = [[sLat,sLng],...sel.map(c=>[c.lat,c.lng])];
+    const strCoords = inputCoords.map(c => `${c[1]},${c[0]}`).join(';');
+    try {
+        const res = await fetch(`https://router.project-osrm.org/trip/v1/driving/${strCoords}?source=first&destination=last&roundtrip=false&overview=full&geometries=geojson`);
+        const data = await res.json();
+        if(data.waypoints) {
+            lastRouteCoords = data.waypoints.sort((a, b) => a.waypoint_index - b.waypoint_index).map(w => [w.location[1], w.location[0]]);
+            lastRouteClients = lastRouteCoords.slice(1).map(coord => sel.find(c => c.lat.toFixed(4) == coord[0].toFixed(4) && c.lng.toFixed(4) == coord[1].toFixed(4))).filter(c => c);
+            if(routeLine) map.removeLayer(routeLine); redMarkers.forEach(m=>map.removeLayer(m)); redMarkers=[];
+            routeLine=L.geoJSON(data.trips[0].geometry,{style:{color:'#0ea5e9',weight:5}}).addTo(map); 
+            map.fitBounds(routeLine.getBounds());
+            lastRouteCoords.slice(1).forEach(c=>redMarkers.push(L.circleMarker(c,{radius:6,color:'red',fillOpacity:1}).addTo(map)));
+            if(!isLoading) { await addDoc(collection(db, "rutas"),{date:document.getElementById('routeDate').value || "Sin fecha", clients:sel.map(c=>c.id), start:{lat:sLat,lng:sLng}, mode:currentStartOption, userId: auth.currentUser.uid }); cargarRutas(); }
+        }
+    } catch(e) { console.log(e); }
+}
+
+window.loadRoute = async function(id){ 
+    const q = query(collection(db, "rutas"), where("userId", "==", auth.currentUser.uid));
+    const sn = await getDocs(q); 
+    const rd = sn.docs.find(d=>d.id===id); if(!rd) return;
+    const d=rd.data(); 
+    clients.forEach((c, i) => { const cb = document.getElementById('c'+i); if(cb) { cb.checked = d.clients.includes(c.id); markers[i].setIcon(cb.checked ? iconPin : getClientIcon(c)); } });
+    document.getElementById('startOption').value = d.mode || "gps";
+    document.getElementById('routeDate').value = d.date || "";
+    window.createRoute(true);
+}
+
+window.enviarRutaGoogleOrdenEstricto = function() {
+    if (lastRouteCoords.length < 2) return alert("Crea ruta azul");
+    let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
+    let lastClient = lastRouteClients[lastRouteClients.length - 1];
+    let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastRouteCoords[lastRouteCoords.length-1][0]},${lastRouteCoords[lastRouteCoords.length-1][1]}`;
+    let waypoints = lastRouteClients.slice(0, -1).map(c => c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`).join('|');
+    window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, '_blank');
+}
+
+// LOGIN CON CREACIÓN AUTOMÁTICA DE USUARIO
+window.login = async function() { 
+    const email = document.getElementById('email').value;
+    const pass = document.getElementById('password').value;
+    try { 
+        await signInWithEmailAndPassword(auth, email, pass);
+        alert("✅ Bienvenido"); 
+    } catch(e) {
+        if(e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+            try {
+                await createUserWithEmailAndPassword(auth, email, pass);
+                alert("✅ Cuenta nueva creada");
+            } catch(e2) { alert("❌ Error: Use 6 caracteres en la clave"); }
+        } else { alert("❌ Error de acceso"); }
+    }
+}
+
+let userMarker = null;
+async function showUserPosition() {
+    try {
+        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
+        if(userMarker) map.removeLayer(userMarker);
+        userMarker = L.marker([pos.coords.latitude, pos.coords.longitude], {icon: iconUser}).addTo(map);
+        map.setView([pos.coords.latitude, pos.coords.longitude], 13);
+    } catch(e) { console.log(e); }
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+    document.getElementById('btnLogin').addEventListener('click',window.login);
+    document.getElementById('btnLogout').addEventListener('click',() => signOut(auth));
+    document.getElementById('btnAddClient').addEventListener('click',window.addClient);
+    document.getElementById('btnCreateRoute').addEventListener('click',() => window.createRoute(false));
+    document.getElementById('btnRutaOrdenEstricto').addEventListener('click',window.enviarRutaGoogleOrdenEstricto);
+    document.getElementById('btnGoogleMaps').addEventListener('click',window.enviarRutaGoogleOrdenEstricto);
+    document.getElementById('btnWaze').addEventListener('click',()=>{
+        if(lastRouteCoords.length < 2) return alert("Crea ruta");
+        const dest = lastRouteCoords[lastRouteCoords.length-1];
+        window.open(`https://waze.com/ul?ll=${dest[0]},${dest[1]}&navigate=yes`, '_blank');
+    });
+    document.getElementById('btnClearRoute').addEventListener('click',()=>{ if(routeLine)map.removeLayer(routeLine); redMarkers.forEach(m=>map.removeLayer(m)); });
+    document.getElementById('startOption').addEventListener('change',e=>document.getElementById('startAddress').style.display=e.target.value==="manual"?"block":"none");
+});
 </script>
 </body>
 </html>

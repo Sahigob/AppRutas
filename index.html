@@ -2,15 +2,15 @@
 <html lang="es">
 <head>
     <meta charset="utf-8" />
-    <title>Rutas PRO V2 - Sistema Multiusuario</title>
+    <title>Rutas PRO V2 - Sistema Maestro Multiusuario</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
-        :root { --primary: #6366f1; --primary-dark: #4f46e5; --success: #10b981; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; }
+        :root { --primary: #6366f1; --primary-dark: #4f46e5; --success: #10b981; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; --admin: #8b5cf6; }
         body { margin:0; font-family: 'Segoe UI', system-ui, sans-serif; display:flex; flex-direction: row; height:100vh; background: var(--bg); color: var(--text); }
         #map { flex:1; height: 100%; z-index: 1; }
-        #panel { width:400px; padding:24px; overflow-y:auto; background: var(--card-bg); border-left: 1px solid var(--border); box-sizing: border-box; box-shadow: -4px 0 15px rgba(0,0,0,0.05); z-index: 10; }
+        #panel { width:420px; padding:20px; overflow-y:auto; background: var(--card-bg); border-left: 1px solid var(--border); box-sizing: border-box; box-shadow: -4px 0 15px rgba(0,0,0,0.05); z-index: 10; }
         @media (max-width: 768px) { body { flex-direction: column; } #map { flex: none; height: 35vh; } #panel { width: 100%; flex: 1; } }
         
         .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
@@ -20,19 +20,20 @@
         button { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:none; background: var(--primary); color:white; font-weight:600; cursor:pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.2s; }
         button:hover { background: var(--primary-dark); }
         .btn-register { background: var(--success); }
-        .btn-logout { background: #ef4444; height: 30px; font-size: 11px; margin: 0; }
+        .btn-logout { background: #ef4444; height: 30px; font-size: 11px; margin: 0; width: auto; padding: 0 15px; }
         
         #btnRutaOrdenEstricto { background-color: #ffc107; color: #212529; }
         .smallBtn { padding:6px 12px; font-size:12px; margin: 4px 2px; width: auto; display: inline-flex; }
         .deleteBtn { background:#ef4444; }
         .saveBtn { background: #22c55e; }
         
-        .client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; }
+        .client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; position: relative; }
         .edit-mode { border: 2px solid var(--primary); background: #f0f9ff; }
         .user-info { background: #eef2ff; padding: 10px; border-radius: 10px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .admin-panel { border: 2px solid var(--admin); background: #f5f3ff; }
         .hidden { display: none; }
         input[type="checkbox"] { width: auto; transform: scale(1.3); margin-right: 10px; }
-        .routeItem { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; background:#f1f5f9; padding:8px 12px; border-radius:10px; border:1px solid #e2e8f0; }
+        .routeItem { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; background:#f1f5f9; padding:8px 12px; border-radius:10px; }
     </style>
 </head>
 <body>
@@ -41,7 +42,7 @@
 
 <div id="panel">
     <div id="authSection" class="card">
-        <h3>🔐 Acceso V2 (Multiusuario)</h3>
+        <h3>🔐 Acceso Profesional</h3>
         <input id="email" placeholder="Correo electrónico" />
         <input id="password" type="password" placeholder="Contraseña (mín. 6)" />
         <button id="btnLogin">Iniciar Sesión</button>
@@ -54,32 +55,28 @@
             <button id="btnLogout" class="btn-logout">Salir</button>
         </div>
 
+        <div id="adminPanel" class="card admin-panel hidden">
+            <h3 style="color: var(--admin)"><i class="fas fa-user-shield"></i> PANEL ADMIN</h3>
+            <div id="adminUserStats" style="font-size: 12px;">Cargando resumen de usuarios...</div>
+        </div>
+
         <div class="card">
             <h3>👥 Gestión de Cliente</h3>
             <input id="name" placeholder="Nombre cliente" />
-            <input id="address" placeholder="Dirección (vacío para GPS)" />
-            <div style="display:flex; gap:8px">
-                <input id="manualLat" placeholder="Latitud" />
-                <input id="manualLng" placeholder="Longitud" />
-            </div>
-            <textarea id="notes" placeholder="Notas (Hotel, Restaurante...)" rows="2"></textarea>
-            <button id="btnAddClient">➕ Guardar en mi lista</button>
+            <input id="address" placeholder="Dirección (o vacío para GPS)" />
+            <textarea id="notes" placeholder="Notas (Escribe 'Hotel' o 'Comida' para iconos especiales)" rows="2"></textarea>
+            <button id="btnAddClient">💾 Guardar en mi lista</button>
         </div>
 
         <div class="card">
             <h3>🧭 Planificador de Ruta</h3>
             <input type="date" id="routeDate" />
-            <select id="startOption">
-                <option value="gps">📍 Mi ubicación actual</option>
-                <option value="manual">✏️ Dirección manual</option>
-            </select>
-            <input id="startAddress" placeholder="Dirección de salida" style="display:none"/>
-            <button id="btnCreateRoute">🧭 Crear ruta azul</button>
+            <button id="btnCreateRoute">🧭 Crear ruta optimizada (Azul)</button>
             <div id="routeList"></div>
         </div>
 
         <div class="card">
-            <h3>🚗 Navegación</h3>
+            <h3>🚗 Navegación Externa</h3>
             <button id="btnRutaOrdenEstricto"><i class="fas fa-list-ol"></i> Google (Orden Lista)</button>
             <button id="btnGoogleMaps" style="background: #22c55e;"><i class="fas fa-magic"></i> Google (Optimizado)</button>
             <button id="btnWaze" style="background: #1e40af;"><i class="fab fa-waze"></i> Abrir Waze</button>
@@ -109,6 +106,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+    const MY_ADMIN_UID = "Qg1kQ6Hb7CRoPBVLIWO1Kg3uMmc2";
 
     let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRouteClients=[];
     let editingClientId = null;
@@ -117,25 +115,27 @@
 
     // ICONOS
     const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
-    const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[38,38], iconAnchor:[19,38] });
-    const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[38,38], iconAnchor:[19,38] });
-    const iconPin = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[32,32], iconAnchor:[16,32] });
+    const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[35,35], iconAnchor:[17,35] });
+    const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[35,35], iconAnchor:[17,35] });
 
     function getIcon(c){
         const t = (c.notes||"").toLowerCase();
         if(t.includes("hotel") || t.includes("dormir")) return iconHotel;
-        if(t.includes("comida") || t.includes("restaurante") || t.includes("bar")) return iconFood;
+        if(t.includes("comida") || t.includes("restaurante")) return iconFood;
         return iconNormal;
     }
 
-    // --- SESIÓN ---
+    // --- SESIÓN Y ADMIN ---
     onAuthStateChanged(auth, (user) => {
         if (user) {
             document.getElementById('authSection').classList.add('hidden');
             document.getElementById('mainSection').classList.remove('hidden');
             document.getElementById('userDisplay').innerText = user.email;
-            cargarClientes();
-            cargarRutas();
+            if(user.uid === MY_ADMIN_UID) {
+                document.getElementById('adminPanel').classList.remove('hidden');
+                updateAdminPanel();
+            }
+            cargarDatos();
         } else {
             document.getElementById('authSection').classList.remove('hidden');
             document.getElementById('mainSection').classList.add('hidden');
@@ -143,88 +143,94 @@
         }
     });
 
-    async function geocode(addr){ 
-        try {
-            let res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`); 
-            let data=await res.json(); 
-            return data.length>0 ? {lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon)} : null; 
-        } catch(e) { return null; }
+    async function updateAdminPanel() {
+        const snap = await getDocs(collection(db, "clientes"));
+        const stats = {};
+        snap.forEach(d => { stats[d.data().userId] = (stats[d.data().userId] || 0) + 1; });
+        document.getElementById('adminUserStats').innerHTML = `Usuarios activos: ${Object.keys(stats).length}<br>Total registros: ${snap.size}`;
     }
 
-    async function cargarClientes() {
-        if(!auth.currentUser) return;
+    // --- LÓGICA DE CLIENTES ---
+    async function cargarDatos() {
         const q = query(collection(db, "clientes"), where("userId", "==", auth.currentUser.uid));
         const snap = await getDocs(q);
         clients = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b)=>a.name.localeCompare(b.name));
         renderClientes();
+        cargarRutas();
     }
 
     function renderClientes() {
         const container = document.getElementById('clientList');
         container.innerHTML = "";
-        markers.forEach(m => map.removeLayer(m));
-        markers = [];
+        markers.forEach(m => map.removeLayer(m)); markers = [];
 
         clients.forEach((c, i) => {
             let div = document.createElement('div');
-            div.className = 'client';
+            div.className = 'client' + (editingClientId === c.id ? ' edit-mode' : '');
+            
             if(editingClientId === c.id) {
-                div.classList.add('edit-mode');
-                div.innerHTML = `<input id="ed_n" value="${c.name}" /><input id="ed_a" value="${c.address||''}" /><textarea id="ed_nt">${c.notes||''}</textarea><button class="smallBtn saveBtn" onclick="saveEdit('${c.id}')">💾</button><button class="smallBtn" onclick="cancelEdit()">❌</button>`;
+                div.innerHTML = `<input id="ed_n" value="${c.name}" /><input id="ed_a" value="${c.address||''}" /><textarea id="ed_nt">${c.notes||''}</textarea>
+                <button class="smallBtn saveBtn" onclick="window.saveEdit('${c.id}')">Guardar</button>
+                <button class="smallBtn" onclick="window.cancelEdit()">X</button>`;
             } else {
-                div.innerHTML = `<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div style="flex:1"><b>${c.name}</b><br><small>${c.address || 'GPS'}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick="editCli('${c.id}')">✏️</button><button class="smallBtn deleteBtn" onclick="deleteCli('${c.id}')">🗑️</button></div>`;
+                div.innerHTML = `<div style="display:flex; align-items:center;">
+                    <input type="checkbox" id="c${i}"> 
+                    <div style="flex:1"><b>${c.name}</b><br><small>${c.address || 'GPS'}</small></div>
+                </div>
+                <div style="margin-top:8px">
+                    <button class="smallBtn" onclick="window.editCli('${c.id}')">✏️</button>
+                    <button class="smallBtn deleteBtn" onclick="window.deleteCli('${c.id}')">🗑️</button>
+                </div>`;
             }
             container.appendChild(div);
             if(c.lat && c.lng) {
-                let m = L.marker([c.lat, c.lng], {icon: getIcon(c)}).addTo(map).bindPopup(c.name);
-                m.on('click', () => { const cb = document.getElementById('c'+i); if(cb){ cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : getIcon(c)); } });
-                markers.push(m);
+                markers.push(L.marker([c.lat, c.lng], {icon: getIcon(c)}).addTo(map).bindPopup(c.name));
             }
         });
         document.getElementById('stats').innerText = clients.length;
     }
 
-    // --- ACCIONES CLIENTES ---
     window.addClient = async () => {
         const name = document.getElementById('name').value.trim();
         const addr = document.getElementById('address').value.trim();
-        const mLat = document.getElementById('manualLat').value.trim();
-        const mLng = document.getElementById('manualLng').value.trim();
-        if(!name) return alert("Pon el nombre");
+        if(!name) return alert("Nombre obligatorio");
+        
         let lat, lng;
-        if(mLat && mLng) { lat = parseFloat(mLat); lng = parseFloat(mLng); }
-        else if(addr) { const co = await geocode(addr); if(!co) return alert("No hallado"); lat = co.lat; lng = co.lng; }
-        else { const p = await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j)); lat = p.coords.latitude; lng = p.coords.longitude; }
+        if(addr) {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`);
+            const data = await res.json();
+            if(data.length>0) { lat = parseFloat(data[0].lat); lng = parseFloat(data[0].lon); }
+            else return alert("Dirección no encontrada");
+        } else {
+            const p = await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j));
+            lat = p.coords.latitude; lng = p.coords.longitude;
+        }
 
-        await addDoc(collection(db, "clientes"), { name, address: addr, lat, lng, notes: document.getElementById('notes').value, userId: auth.currentUser.uid });
-        alert("✅ OK");
+        await addDoc(collection(db, "clientes"), {
+            name, address: addr, lat, lng, notes: document.getElementById('notes').value, userId: auth.currentUser.uid
+        });
         document.getElementById('name').value=""; document.getElementById('address').value="";
-        cargarClientes();
+        cargarDatos();
     };
 
     window.editCli = (id) => { editingClientId = id; renderClientes(); };
     window.cancelEdit = () => { editingClientId = null; renderClientes(); };
     window.saveEdit = async (id) => {
         const n = document.getElementById('ed_n').value, a = document.getElementById('ed_a').value, nt = document.getElementById('ed_nt').value;
-        const co = await geocode(a);
-        let up = { name: n, address: a, notes: nt };
-        if(co) { up.lat = co.lat; up.lng = co.lng; }
-        await updateDoc(doc(db, "clientes", id), up);
-        editingClientId = null; cargarClientes();
+        await updateDoc(doc(db, "clientes", id), { name: n, address: a, notes: nt });
+        editingClientId = null; cargarDatos();
     };
-    window.deleteCli = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db, "clientes", id)); cargarClientes(); } };
+    window.deleteCli = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db, "clientes", id)); cargarDatos(); } };
 
-    // --- RUTAS ---
+    // --- RUTAS Y NAVEGACIÓN ---
     window.createRoute = async (isLoad = false) => {
         let sel = clients.filter((c,i) => document.getElementById('c'+i)?.checked);
-        if(sel.length < 1) return alert("Selecciona clientes");
-        let startMode = document.getElementById('startOption').value;
-        let sLat, sLng;
-        if(startMode === "gps") { const p = await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j)); sLat = p.coords.latitude; sLng = p.coords.longitude; }
-        else { const co = await geocode(document.getElementById('startAddress').value); sLat = co.lat; sLng = co.lng; }
+        if(sel.length < 1) return alert("Marca clientes en la lista");
 
-        const coords = [[sLat, sLng], ...sel.map(c => [c.lat, c.lng])];
+        const pos = await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j));
+        const coords = [[pos.coords.latitude, pos.coords.longitude], ...sel.map(c => [c.lat, c.lng])];
         const str = coords.map(c => `${c[1]},${c[0]}`).join(';');
+        
         const res = await fetch(`https://router.project-osrm.org/trip/v1/driving/${str}?source=first&destination=last&roundtrip=false&overview=full&geometries=geojson`);
         const data = await res.json();
         
@@ -236,7 +242,6 @@
             
             lastRouteCoords = data.waypoints.sort((a,b)=>a.waypoint_index - b.waypoint_index).map(w => [w.location[1], w.location[0]]);
             lastRouteClients = lastRouteCoords.slice(1).map(coord => sel.find(c => c.lat.toFixed(4) == coord[0].toFixed(4))).filter(c=>c);
-            lastRouteCoords.slice(1).forEach(c => redMarkers.push(L.circleMarker(c, {radius: 6, color: 'red', fillOpacity: 1}).addTo(map)));
             
             if(!isLoad) await addDoc(collection(db, "rutas"), { date: document.getElementById('routeDate').value, clients: sel.map(c=>c.id), userId: auth.currentUser.uid });
             cargarRutas();
@@ -249,9 +254,7 @@
         const cont = document.getElementById('routeList'); cont.innerHTML = "";
         snap.forEach(d => {
             const r = d.data();
-            let div = document.createElement('div'); div.className = "routeItem";
-            div.innerHTML = `<span>📅 ${r.date || 'S/F'}</span><div><button class="smallBtn" onclick="loadRoute('${d.id}')">👁️</button><button class="smallBtn deleteBtn" onclick="deleteRoute('${d.id}')">🗑️</button></div>`;
-            cont.appendChild(div);
+            cont.innerHTML += `<div class="routeItem"><span>📅 ${r.date || 'Sin fecha'}</span><button class="smallBtn" onclick="window.loadRoute('${d.id}')">Ver</button></div>`;
         });
     }
 
@@ -261,32 +264,26 @@
         clients.forEach((c, i) => { const cb = document.getElementById('c'+i); if(cb) cb.checked = r.clients.includes(c.id); });
         window.createRoute(true);
     };
-    window.deleteRoute = async (id) => { await deleteDoc(doc(db, "rutas", id)); cargarRutas(); };
 
-    // --- NAVEGACIÓN ---
     window.navGoogle = (opt) => {
-        if(lastRouteCoords.length < 2) return alert("Crea ruta primero");
-        let waypoints = lastRouteClients.map(c => `${c.lat},${c.lng}`).join('|');
-        let url = `https://www.google.com/maps/dir/?api=1&destination=${lastRouteCoords[lastRouteCoords.length-1].join(',')}&waypoints=${waypoints}&travelmode=driving`;
+        if(lastRouteCoords.length < 2) return alert("Crea primero la ruta azul");
+        let dest = lastRouteCoords[lastRouteCoords.length-1];
+        let way = lastRouteClients.slice(0, -1).map(c => `${c.lat},${c.lng}`).join('|');
+        let url = `https://www.google.com/maps/dir/?api=1&destination=${dest[0]},${dest[1]}&waypoints=${way}&travelmode=driving`;
         if(!opt) url += "&dir_action=navigate";
         window.open(url, '_blank');
     };
 
-    // --- LOGIN ---
-    document.getElementById('btnLogin').onclick = () => {
-        signInWithEmailAndPassword(auth, document.getElementById('email').value.trim(), document.getElementById('password').value).catch(e => alert(e.message));
-    };
-    document.getElementById('btnRegister').onclick = () => {
-        createUserWithEmailAndPassword(auth, document.getElementById('email').value.trim(), document.getElementById('password').value).then(()=>alert("Creado")).catch(e => alert(e.message));
-    };
+    // --- EVENTOS ---
+    document.getElementById('btnLogin').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value.trim(), document.getElementById('password').value).catch(e => alert("Error: " + e.message));
+    document.getElementById('btnRegister').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value.trim(), document.getElementById('password').value).then(()=>alert("Cuenta creada")).catch(e => alert("Error: " + e.message));
     document.getElementById('btnLogout').onclick = () => signOut(auth);
     document.getElementById('btnAddClient').onclick = window.addClient;
     document.getElementById('btnCreateRoute').onclick = () => window.createRoute(false);
     document.getElementById('btnRutaOrdenEstricto').onclick = () => window.navGoogle(false);
     document.getElementById('btnGoogleMaps').onclick = () => window.navGoogle(true);
     document.getElementById('btnWaze').onclick = () => window.open(`https://waze.com/ul?ll=${lastRouteCoords[lastRouteCoords.length-1][0]},${lastRouteCoords[lastRouteCoords.length-1][1]}&navigate=yes`);
-    document.getElementById('btnClearRoute').onclick = () => { if(routeLine) map.removeLayer(routeLine); redMarkers.forEach(m=>map.removeLayer(m)); };
-    document.getElementById('startOption').onchange = (e) => document.getElementById('startAddress').style.display = e.target.value === "manual" ? "block" : "none";
+    document.getElementById('btnClearRoute').onclick = () => { if(routeLine) map.removeLayer(routeLine); };
 
 </script>
 </body>

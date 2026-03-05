@@ -94,7 +94,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebas
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-auth.js";
 
-// FIREBASE PROYECTO 2
 const firebaseConfig = { apiKey: "AIzaSyALty_4SfeZUg6B6_dbcOeZvGYpnu4gYsE", authDomain: "rutas-56f86.firebaseapp.com", projectId: "rutas-56f86", storageBucket: "rutas-56f86.appspot.com", messagingSenderId: "1026881492897", appId: "1:1026881492897:web:fcb315b53fcf5e40e3dde0" };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -104,7 +103,6 @@ let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRo
 let editingClientId = null;
 let currentStartOption = "gps";
 
-// ICONOS PROYECTO 1
 const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
 const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[38,38], iconAnchor:[19,38] });
 const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[38,38], iconAnchor:[19,38] });
@@ -121,7 +119,6 @@ function getClientIcon(cliente){
 let map = L.map('map').setView([40.4168,-3.7038],12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-// ESCUCHADOR DE ESTADO DE USUARIO (MULTI-USUARIO)
 onAuthStateChanged(auth, (user) => {
     if (user) {
         document.getElementById('authSection').classList.add('hidden');
@@ -271,13 +268,11 @@ window.enviarRutaGoogleOrdenEstricto = function() {
     window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, '_blank');
 }
 
-// LOGIN CON CREACIÓN AUTOMÁTICA DE USUARIO
 window.login = async function() { 
     const email = document.getElementById('email').value;
     const pass = document.getElementById('password').value;
     try { 
         await signInWithEmailAndPassword(auth, email, pass);
-        alert("✅ Bienvenido"); 
     } catch(e) {
         if(e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
             try {

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="utf-8" />
-    <title>Rutas PRO V2 - Historial y Precisión</title>
+    <title>Rutas PRO V2 - Control Total</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -15,21 +15,21 @@
         
         .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         h3 { margin: 10px 0; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--primary-dark); }
-        input, textarea { width:100%; margin:8px 0; padding:10px; border-radius:10px; border:1px solid var(--border); box-sizing: border-box; }
+        input, textarea { width:100%; margin:8px 0; padding:10px; border-radius:10px; border:1px solid var(--border); box-sizing: border-box; font-size: 14px; }
         
-        button { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:none; background: var(--primary); color:white; font-weight:600; cursor:pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        button { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:none; background: var(--primary); color:white; font-weight:600; cursor:pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.2s; }
+        button:hover { opacity: 0.9; }
         #btnRutaOrdenEstricto { background-color: #ffc107; color: #212529; }
         .smallBtn { padding:6px 10px; font-size:12px; margin: 4px 2px; width: auto; display: inline-flex; }
         .deleteBtn { background:#ef4444; }
         .saveBtn { background: #22c55e; }
         
-        .client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; cursor: pointer; }
+        .client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; cursor: pointer; transition: 0.2s; }
         .client-selected { background: #fee2e2 !important; border-color: #ef4444 !important; }
         .edit-mode { border: 2px solid var(--primary); background: #f0f9ff; }
         .hidden { display: none; }
         input[type="checkbox"] { width: auto; transform: scale(1.3); margin-right: 10px; pointer-events: none; }
-        
-        .route-card { background: #f1f5f9; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .route-card { background: #f1f5f9; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); }
     </style>
 </head>
 <body>
@@ -46,16 +46,20 @@
 
     <div id="mainSection" class="hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
-            <span id="userDisplay" style="font-size: 11px;"></span>
+            <span id="userDisplay" style="font-size: 11px; color: #64748b"></span>
             <button id="btnLogout" style="background:#ef4444; height:25px; padding:0 10px; width:auto; font-size:10px">Salir</button>
         </div>
 
         <div class="card">
-            <h3>👥 Nuevo Cliente</h3>
-            <input id="name" placeholder="Nombre" />
-            <input id="address" placeholder="Dirección completa (Calle, nº...)" />
-            <textarea id="notes" placeholder="Notas..." rows="2"></textarea>
-            <button id="btnAddClient">💾 Guardar Cliente</button>
+            <h3>👥 Gestión de Cliente</h3>
+            <input id="name" placeholder="Nombre cliente" />
+            <input id="address" placeholder="Dirección (Calle, número...)" />
+            <div style="display:flex; gap:8px">
+                <input id="manualLat" placeholder="Latitud" />
+                <input id="manualLng" placeholder="Longitud" />
+            </div>
+            <textarea id="notes" placeholder="Notas (Hotel, Comida...)" rows="2"></textarea>
+            <button id="btnAddClient" class="saveBtn">💾 Guardar Cliente</button>
         </div>
 
         <div class="card">
@@ -132,13 +136,9 @@
             const r = d.data();
             const div = document.createElement('div');
             div.className = 'route-card';
-            div.innerHTML = `
-                <span style="font-size:12px"><b>${r.date}</b> (${r.clientIds.length} paradas)</span>
-                <div>
-                    <button class="smallBtn saveBtn" onclick="window.cargarRutaGuardada('${d.id}')">📂</button>
-                    <button class="smallBtn deleteBtn" onclick="window.eliminarRuta('${d.id}')">🗑️</button>
-                </div>
-            `;
+            div.innerHTML = `<span><b>${r.date}</b> (${r.clientIds.length} paradas)</span>
+                <div><button class="smallBtn saveBtn" onclick="window.cargarRutaGuardada('${d.id}')">📂</button>
+                <button class="smallBtn deleteBtn" onclick="window.eliminarRuta('${d.id}')">🗑️</button></div>`;
             container.appendChild(div);
         });
     }
@@ -163,12 +163,12 @@
             div.className = 'client' + (editingClientId === c.id ? ' edit-mode' : '');
             
             if(editingClientId === c.id) {
-                div.innerHTML = `<input id="ed_n" value="${c.name}" /><input id="ed_a" value="${c.address||''}" /><button class="smallBtn saveBtn" onclick="window.saveEdit('${c.id}')">OK</button>`;
+                div.innerHTML = `<input id="ed_n" value="${c.name}" /><input id="ed_a" value="${c.address||''}" /><button class="smallBtn saveBtn" onclick="window.saveEdit('${c.id}')">Guardar</button><button class="smallBtn" onclick="window.cancelEdit()">X</button>`;
             } else {
                 div.onclick = (e) => { if(e.target.tagName !== 'BUTTON') window.toggleCliente(i); };
-                div.innerHTML = `<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"><div style="flex:1"><b>${c.name}</b><br><small>${c.address || 'Sin dirección'}</small></div></div>
-                <button class="smallBtn" onclick="window.editCli('${c.id}'); event.stopPropagation();">✏️</button>
-                <button class="smallBtn deleteBtn" onclick="window.deleteCli('${c.id}'); event.stopPropagation();">🗑️</button>`;
+                div.innerHTML = `<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"><div style="flex:1"><b>${c.name}</b><br><small>${c.address || 'Lat: '+c.lat.toFixed(3)}</small></div></div>
+                <button class="smallBtn" onclick="window.editCli('${c.id}'); event.stopPropagation();">✏️ Editar</button>
+                <button class="smallBtn deleteBtn" onclick="window.deleteCli('${c.id}'); event.stopPropagation();">🗑️ Borrar</button>`;
             }
             container.appendChild(div);
             let m = L.marker([c.lat, c.lng], {icon: iconBlue}).addTo(map);
@@ -178,15 +178,38 @@
         document.getElementById('stats').innerText = clients.length;
     }
 
-    window.editCli = (id) => { editingClientId = id; renderClientes(); };
-    window.saveEdit = async (id) => {
-        await updateDoc(doc(db, "clientes", id), { name: document.getElementById('ed_n').value, address: document.getElementById('ed_a').value });
-        editingClientId = null; cargarDatos();
+    window.addClient = async () => {
+        const n = document.getElementById('name').value.trim();
+        const a = document.getElementById('address').value.trim();
+        const la = document.getElementById('manualLat').value.trim();
+        const lo = document.getElementById('manualLng').value.trim();
+        const nt = document.getElementById('notes').value;
+
+        if(!n) return alert("El nombre es obligatorio");
+        
+        let lat, lng;
+
+        if(la && lo) {
+            lat = parseFloat(la);
+            lng = parseFloat(lo);
+        } else if(a) {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(a)}`);
+            const d = await res.json();
+            if(d.length > 0) {
+                lat = parseFloat(d[0].lat);
+                lng = parseFloat(d[0].lon);
+            } else return alert("No se pudo encontrar la dirección en el mapa");
+        } else return alert("Introduce dirección o coordenadas");
+
+        await addDoc(collection(db, "clientes"), { name: n, address: a, lat, lng, notes: nt, userId: auth.currentUser.uid });
+        document.getElementById('name').value = ""; document.getElementById('address').value = ""; 
+        document.getElementById('manualLat').value = ""; document.getElementById('manualLng').value = "";
+        cargarDatos();
     };
 
     window.createRoute = async () => {
         let sel = clients.filter((c,i) => document.getElementById('c'+i)?.checked);
-        if(sel.length < 1) return alert("Selecciona clientes");
+        if(sel.length < 1) return alert("Selecciona paradas primero");
         const date = document.getElementById('routeDate').value || new Date().toLocaleDateString();
         
         const pos = await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j));
@@ -201,7 +224,6 @@
             routeLine = L.geoJSON(data.trips[0].geometry, {style: {color: '#6366f1', weight: 5}}).addTo(map);
             map.fitBounds(routeLine.getBounds());
             
-            // Guardar en Firebase
             const indices = data.waypoints.sort((a,b)=>a.waypoint_index - b.waypoint_index).map(w => w.waypoint_index);
             lastRouteClients = indices.slice(1).map(idx => sel[idx-1]);
             
@@ -212,15 +234,13 @@
                 optimizedOrderIds: lastRouteClients.map(c => c.id)
             });
             cargarHistorialRutas();
-            alert("Ruta guardada con éxito");
+            alert("Ruta guardada.");
         }
     };
 
     window.cargarRutaGuardada = async (id) => {
-        const snap = await getDocs(query(collection(db, "rutas")));
+        const snap = await getDocs(query(collection(db, "rutas"), where("userId", "==", auth.currentUser.uid)));
         const ruta = snap.docs.find(d => d.id === id).data();
-        
-        // Desmarcar todo
         clients.forEach((c, i) => {
             const cb = document.getElementById('c' + i);
             if(cb) {
@@ -230,18 +250,8 @@
                 markers[i].setIcon(cb.checked ? iconRed : iconBlue);
             }
         });
-        
-        // Reconstruir lastRouteClients para navegación
         lastRouteClients = ruta.optimizedOrderIds.map(id => clients.find(c => c.id === id)).filter(c => c);
-        // Dibujar línea (opcional, podrías llamar a createRoute otra vez si quieres la línea azul)
-        alert("Ruta cargada. Pulsa 'Crear Ruta' si quieres ver la línea azul de nuevo.");
-    };
-
-    window.eliminarRuta = async (id) => {
-        if(confirm("¿Eliminar esta ruta del historial?")) {
-            await deleteDoc(doc(db, "rutas", id));
-            cargarHistorialRutas();
-        }
+        alert("Ruta cargada en la lista.");
     };
 
     window.abrirGooglePreciso = (optimizado) => {
@@ -255,6 +265,15 @@
         window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, '_blank');
     };
 
+    window.editCli = (id) => { editingClientId = id; renderClientes(); };
+    window.cancelEdit = () => { editingClientId = null; renderClientes(); };
+    window.saveEdit = async (id) => {
+        await updateDoc(doc(db, "clientes", id), { name: document.getElementById('ed_n').value, address: document.getElementById('ed_a').value });
+        editingClientId = null; cargarDatos();
+    };
+    window.deleteCli = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db, "clientes", id)); cargarDatos(); } };
+    window.eliminarRuta = async (id) => { if(confirm("¿Eliminar ruta guardada?")) { await deleteDoc(doc(db, "rutas", id)); cargarHistorialRutas(); } };
+
     document.getElementById('btnLogin').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => alert(e.message));
     document.getElementById('btnLogout').onclick = () => signOut(auth);
     document.getElementById('btnAddClient').onclick = window.addClient;
@@ -262,20 +281,6 @@
     document.getElementById('btnRutaOrdenEstricto').onclick = () => window.abrirGooglePreciso(false);
     document.getElementById('btnGoogleMaps').onclick = () => window.abrirGooglePreciso(true);
     document.getElementById('btnClearRoute').onclick = () => { if(routeLine) map.removeLayer(routeLine); };
-
-    window.addClient = async () => {
-        const n = document.getElementById('name').value, a = document.getElementById('address').value;
-        if(!n || !a) return alert("Falta nombre o dirección");
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(a)}`);
-        const d = await res.json();
-        if(d.length>0){
-            await addDoc(collection(db, "clientes"), { name:n, address:a, lat:parseFloat(d[0].lat), lng:parseFloat(d[0].lon), userId: auth.currentUser.uid });
-            cargarDatos();
-        } else alert("No encontrado");
-    };
-
-    window.deleteCli = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db, "clientes", id)); cargarDatos(); } };
-
 </script>
 </body>
 </html>

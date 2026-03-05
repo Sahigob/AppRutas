@@ -2,32 +2,33 @@
 <html lang="es">
 <head>
     <meta charset="utf-8" />
-    <title>Rutas PRO V2 - Orden Estricto</title>
+    <title>Rutas PRO - Orden Estricto y Persistente</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
-        :root { --primary: #6366f1; --primary-dark: #4f46e5; --success: #10b981; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; }
+        :root { --primary: #0ea5e9; --primary-dark: #0284c7; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; }
         body { margin:0; font-family: 'Segoe UI', system-ui, sans-serif; display:flex; flex-direction: row; height:100vh; background: var(--bg); color: var(--text); }
         #map { flex:1; height: 100%; z-index: 1; }
-        #panel { width:420px; padding:20px; overflow-y:auto; background: var(--card-bg); border-left: 1px solid var(--border); box-sizing: border-box; z-index: 10; }
+        #panel { width:400px; padding:20px; overflow-y:auto; background: var(--card-bg); border-left: 1px solid var(--border); box-sizing: border-box; z-index: 10; }
         @media (max-width: 768px) { body { flex-direction: column; } #map { flex: none; height: 35vh; } #panel { width: 100%; flex: 1; } }
         
         .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        h3 { margin: 10px 0; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--primary-dark); }
-        input, textarea { width:100%; margin:8px 0; padding:10px; border-radius:10px; border:1px solid var(--border); box-sizing: border-box; font-size: 14px; }
+        h3 { margin: 15px 0 10px 0; font-size: 1.1rem; font-weight: 700; color: var(--primary-dark); }
+        input, textarea, select { width:100%; margin:8px 0; padding:10px; border-radius:10px; border:1px solid var(--border); box-sizing: border-box; font-size: 14px; }
         
-        button { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:none; background: var(--primary); color:white; font-weight:600; cursor:pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
-        #btnRutaOrdenEstricto { background-color: #ffc107; color: #212529; }
+        button { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:none; background: var(--primary); color:white; font-weight:600; cursor:pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.2s; }
+        #btnRutaOrdenEstricto { background-color: #ffc107; color: #212529; border: 2px solid #e0a800; }
         .smallBtn { padding:6px 10px; font-size:12px; margin: 4px 2px; width: auto; display: inline-flex; }
         .deleteBtn { background:#ef4444; }
         .saveBtn { background: #22c55e; }
         
         .client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; cursor: pointer; }
         .client-selected { background: #fee2e2 !important; border-color: #ef4444 !important; }
-        .edit-mode { border: 2px solid var(--primary); background: #f0f9ff; padding: 15px; }
+        .edit-mode { border: 2px solid var(--primary); background: #f0f9ff; }
         .hidden { display: none; }
         input[type="checkbox"] { width: auto; transform: scale(1.3); margin-right: 10px; pointer-events: none; }
+        .routeItem { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; background:#f1f5f9; padding:8px 12px; border-radius:10px; border:1px solid #e2e8f0; }
     </style>
 </head>
 <body>
@@ -45,13 +46,13 @@
     <div id="mainSection" class="hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
             <span id="userDisplay" style="font-size: 11px;"></span>
-            <button id="btnLogout" style="background:#ef4444; height:25px; padding:0 10px; width:auto; font-size:10px">Salir</button>
+            <button id="btnLogout" class="deleteBtn smallBtn">Salir</button>
         </div>
 
         <div class="card">
             <h3>👥 Gestión de Cliente</h3>
             <input id="name" placeholder="Nombre cliente" />
-            <input id="address" placeholder="Dirección (Calle, número...)" />
+            <input id="address" placeholder="Dirección manual (Vacío para GPS)" />
             <div style="display:flex; gap:8px">
                 <input id="manualLat" placeholder="Latitud" />
                 <input id="manualLng" placeholder="Longitud" />
@@ -61,20 +62,25 @@
         </div>
 
         <div class="card">
-            <h3>🧭 Rutas Guardadas</h3>
+            <h3>🧭 Planificador de Ruta</h3>
             <input type="date" id="routeDate" />
+            <select id="startOption">
+                <option value="gps">📍 Mi ubicación actual</option>
+                <option value="manual">✏️ Dirección manual</option>
+            </select>
+            <input id="startAddress" placeholder="Dirección de salida" style="display:none"/>
             <button id="btnCreateRoute">🧭 Crear y Guardar Ruta Azul</button>
             <div id="routeHistoryList"></div>
         </div>
 
         <div class="card">
-            <h3>🚗 Abrir en Google Maps</h3>
+            <h3>🚗 Navegación Google</h3>
             <button id="btnRutaOrdenEstricto"><i class="fas fa-list-ol"></i> Google (Orden Lista)</button>
-            <button id="btnGoogleMaps" style="background: #22c55e;"><i class="fas fa-magic"></i> Google Optimizado</button>
+            <button id="btnGoogleOptimizado" style="background: #22c55e;"><i class="fas fa-magic"></i> Google Optimizado</button>
             <button id="btnClearRoute" style="background: #64748b;">🧹 Limpiar mapa</button>
         </div>
 
-        <h3>📊 Mis Clientes <span id="stats" style="background:#e0f2fe; padding:2px 8px; border-radius:10px; font-size:12px">0</span></h3>
+        <h3>📊 Clientes <span id="stats" style="background:#e0f2fe; padding:2px 10px; border-radius:15px; font-size:12px">0</span></h3>
         <div id="clientList"></div>
     </div>
 </div>
@@ -85,34 +91,27 @@
     import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-auth.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyByi9lTT4kN4YbD8cneKLmTm05RzCAgPhI",
-        authDomain: "organizador-de-visitas-f10ad.firebaseapp.com",
-        projectId: "organizador-de-visitas-f10ad",
-        storageBucket: "organizador-de-visitas-f10ad.firebasestorage.app",
-        messagingSenderId: "737024476908",
-        appId: "1:737024476908:web:09cf2cc99ac0b7352f07c9"
-    };
-
+    // CONFIGURACIÓN FIREBASE (Usando la tuya del segundo proyecto)
+    const firebaseConfig = { apiKey: "AIzaSyByi9lTT4kN4YbD8cneKLmTm05RzCAgPhI", authDomain: "organizador-de-visitas-f10ad.firebaseapp.com", projectId: "organizador-de-visitas-f10ad", storageBucket: "organizador-de-visitas-f10ad.firebasestorage.app", messagingSenderId: "737024476908", appId: "1:737024476908:web:09cf2cc99ac0b7352f07c9" };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    let clients=[], markers=[], routeLine, lastRouteClients=[], editingClientId = null;
+    let clients=[], markers=[], routeLine, lastRouteCoords=[], lastRouteClients=[], editingClientId = null;
     let map = L.map('map').setView([40.41, -3.70], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // ICONOS ESPECIALES
-    const iconNormal = (color) => new L.Icon({ iconUrl:`https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`, shadowUrl:"https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
+    // ICONOS (Lógica del Proyecto 1 integrada)
+    const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
     const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[35,35], iconAnchor:[17,35] });
     const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[35,35], iconAnchor:[17,35] });
+    const iconSelected = new L.Icon({ iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png", shadowUrl:"https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
 
-    function getIcon(c, isSelected) {
-        if(isSelected) return iconNormal('red');
+    function getClientIcon(c){
         const t = (c.notes || "").toLowerCase();
-        if(t.includes("hotel")) return iconHotel;
-        if(t.includes("comida") || t.includes("restaurante")) return iconFood;
-        return iconNormal('blue');
+        if(t.includes("hotel") || t.includes("dormir")) return iconHotel;
+        if(t.includes("comida") || t.includes("restaurante") || t.includes("bar")) return iconFood;
+        return iconNormal;
     }
 
     onAuthStateChanged(auth, (user) => {
@@ -120,7 +119,7 @@
             document.getElementById('authSection').classList.add('hidden');
             document.getElementById('mainSection').classList.remove('hidden');
             document.getElementById('userDisplay').innerText = user.email;
-            cargarDatos();
+            cargarClientes();
             cargarHistorialRutas();
         } else {
             document.getElementById('authSection').classList.remove('hidden');
@@ -128,7 +127,7 @@
         }
     });
 
-    async function cargarDatos() {
+    async function cargarClientes() {
         const q = query(collection(db, "clientes"), where("userId", "==", auth.currentUser.uid));
         const snap = await getDocs(q);
         clients = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b)=>a.name.localeCompare(b.name));
@@ -142,24 +141,12 @@
         container.innerHTML = "";
         snap.forEach(d => {
             const r = d.data();
-            const div = document.createElement('div');
-            div.className = 'route-card' || 'card';
-            div.style = "background:#f1f5f9; padding:8px; border-radius:8px; display:flex; justify-content:space-between; margin-bottom:5px; align-items:center;";
-            div.innerHTML = `<span style="font-size:12px"><b>${r.date}</b></span>
-                <div><button class="smallBtn saveBtn" onclick="window.cargarRutaGuardada('${d.id}')">📂</button>
-                <button class="smallBtn deleteBtn" onclick="window.eliminarRuta('${d.id}')">🗑️</button></div>`;
+            let div = document.createElement('div');
+            div.className = "routeItem";
+            div.innerHTML = `<span>📅 ${r.date || 'Ruta'}</span><div><button class="smallBtn saveBtn" onclick="window.loadSavedRoute('${d.id}')">📂</button><button class="smallBtn deleteBtn" onclick="window.deleteRoute('${d.id}')">🗑️</button></div>`;
             container.appendChild(div);
         });
     }
-
-    window.toggleCliente = (index) => {
-        const cb = document.getElementById('c' + index);
-        const div = document.getElementById('div-c' + index);
-        if(!cb) return;
-        cb.checked = !cb.checked;
-        cb.checked ? div.classList.add('client-selected') : div.classList.remove('client-selected');
-        markers[index].setIcon(getIcon(clients[index], cb.checked));
-    };
 
     function renderClientes() {
         const container = document.getElementById('clientList');
@@ -173,58 +160,123 @@
             
             if(editingClientId === c.id) {
                 div.innerHTML = `
-                    <input id="ed_n" value="${c.name}" placeholder="Nombre" />
-                    <input id="ed_a" value="${c.address||''}" placeholder="Dirección" />
-                    <textarea id="ed_notes" placeholder="Hotel, Comida...">${c.notes||''}</textarea>
-                    <button class="smallBtn saveBtn" onclick="window.saveEdit('${c.id}')">Guardar</button>
-                    <button class="smallBtn" onclick="window.cancelEdit()">X</button>`;
+                    <input id="ed_n" value="${c.name}" />
+                    <input id="ed_a" value="${c.address||''}" />
+                    <textarea id="ed_nt" rows="2">${c.notes||''}</textarea>
+                    <button class="smallBtn saveBtn" onclick="window.saveEdit('${c.id}')">💾 OK</button>
+                    <button class="smallBtn" onclick="window.cancelEdit()">❌</button>`;
             } else {
                 div.onclick = (e) => { if(e.target.tagName !== 'BUTTON') window.toggleCliente(i); };
-                div.innerHTML = `<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"><div style="flex:1"><b>${c.name}</b><br><small>${c.address || 'Coord: '+c.lat.toFixed(3)}</small></div></div>
-                <button class="smallBtn" onclick="window.editCli('${c.id}'); event.stopPropagation();">✏️ Editar</button>
-                <button class="smallBtn deleteBtn" onclick="window.deleteCli('${c.id}'); event.stopPropagation();">🗑️ Borrar</button>`;
+                div.innerHTML = `<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"><div style="flex:1"><b>${c.name}</b><br><small>${c.address || 'GPS'}</small></div></div>
+                <div style="margin-top:5px">
+                    <button class="smallBtn" onclick="window.editCli('${c.id}'); event.stopPropagation();">✏️ Editar</button>
+                    <button class="smallBtn deleteBtn" onclick="window.deleteCli('${c.id}'); event.stopPropagation();">🗑️</button>
+                </div>`;
             }
             container.appendChild(div);
-            let m = L.marker([c.lat, c.lng], {icon: getIcon(c, false)}).addTo(map);
+            let m = L.marker([c.lat, c.lng], {icon: getClientIcon(c)}).addTo(map);
             m.on('click', (e) => { L.DomEvent.stopPropagation(e); window.toggleCliente(i); });
             markers.push(m);
         });
         document.getElementById('stats').innerText = clients.length;
     }
 
-    // --- GOOGLE MAPS API OFICIAL (ORDEN ESTRICTO) ---
-    window.abrirGoogleMapsOficial = (optimizado) => {
-        let lista = optimizado ? lastRouteClients : clients.filter((c,i) => document.getElementById('c'+i)?.checked);
-        if(lista.length < 1) return alert("Selecciona clientes primero");
+    window.toggleCliente = (i) => {
+        const cb = document.getElementById('c' + i);
+        const div = document.getElementById('div-c' + i);
+        cb.checked = !cb.checked;
+        cb.checked ? div.classList.add('client-selected') : div.classList.remove('client-selected');
+        markers[i].setIcon(cb.checked ? iconSelected : getClientIcon(clients[i]));
+    };
 
-        // El origen será la ubicación actual (vacío en Google API lo detecta auto)
-        let lastClient = lista[lista.length - 1];
-        let destination = lastClient.address ? encodeURIComponent(lastClient.address) : `${lastClient.lat},${lastClient.lng}`;
-        
-        let waypoints = "";
-        if (lista.length > 1) {
-            waypoints = "&waypoints=" + lista.slice(0, -1).map(c => {
-                return c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`;
-            }).join('|');
+    // LOGICA GOOGLE MAPS DEL PROYECTO 1 (ORDEN ESTRICTO)
+    window.enviarAGoogle = (optimizado) => {
+        let sel;
+        if(optimizado) {
+            if(lastRouteClients.length < 1) return alert("Crea primero la ruta azul");
+            sel = lastRouteClients;
+        } else {
+            sel = clients.filter((c,i) => document.getElementById('c'+i)?.checked);
+            if(sel.length < 1) return alert("Selecciona clientes de la lista");
         }
 
-        // URL API OFICIAL DE GOOGLE PARA MANTENER ORDEN
-        const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}${waypoints}&travelmode=driving`;
+        let origin = (document.getElementById('startOption').value === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
+        let lastClient = sel[sel.length - 1];
+        let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastClient.lat},${lastClient.lng}`;
+        
+        let waypoints = sel.slice(0, -1).map(c => c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`).join('|');
+
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
         window.open(url, '_blank');
     };
 
+    // FUNCIONES DE GESTION
     window.addClient = async () => {
         const n = document.getElementById('name').value, a = document.getElementById('address').value, la = document.getElementById('manualLat').value, lo = document.getElementById('manualLng').value, nt = document.getElementById('notes').value;
-        if(!n) return alert("Falta nombre");
+        if(!n) return alert("Nombre obligatorio");
         let lat, lng;
         if(la && lo) { lat = parseFloat(la); lng = parseFloat(lo); }
-        else {
+        else if(a) {
             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(a)}`);
             const d = await res.json();
-            if(d.length > 0) { lat = parseFloat(d[0].lat); lng = parseFloat(d[0].lon); } else return alert("No hallado");
+            if(d.length>0){ lat=parseFloat(d[0].lat); lng=parseFloat(d[0].lon); } else return alert("No hallado");
+        } else {
+            const p = await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j));
+            lat = p.coords.latitude; lng = p.coords.longitude;
         }
         await addDoc(collection(db, "clientes"), { name:n, address:a, lat, lng, notes:nt, userId: auth.currentUser.uid });
-        cargarDatos();
+        cargarClientes();
+    };
+
+    window.createRoute = async (isLoading = false) => {
+        let sel = clients.filter((c,i) => document.getElementById('c'+i)?.checked);
+        if(sel.length < 1) return alert("Selecciona clientes");
+        const mode = document.getElementById('startOption').value;
+        let sLat, sLng;
+        if(mode === "gps"){
+            const p = await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j));
+            sLat = p.coords.latitude; sLng = p.coords.longitude;
+        } else {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(document.getElementById('startAddress').value)}`);
+            const d = await res.json();
+            sLat = parseFloat(d[0].lat); sLng = parseFloat(d[0].lon);
+        }
+
+        const str = [[sLat,sLng], ...sel.map(c=>[c.lat,c.lng])].map(c=>`${c[1]},${c[0]}`).join(';');
+        const res = await fetch(`https://router.project-osrm.org/trip/v1/driving/${str}?source=first&destination=last&roundtrip=false&overview=full&geometries=geojson`);
+        const data = await res.json();
+        
+        if(data.trips) {
+            if(routeLine) map.removeLayer(routeLine);
+            routeLine = L.geoJSON(data.trips[0].geometry, {style: {color: '#0ea5e9', weight: 5}}).addTo(map);
+            map.fitBounds(routeLine.getBounds());
+            
+            const indices = data.waypoints.sort((a,b)=>a.waypoint_index - b.waypoint_index).map(w => w.waypoint_index);
+            lastRouteClients = indices.slice(1).map(idx => sel[idx-1]);
+
+            if(!isLoading) {
+                await addDoc(collection(db, "rutas"), {
+                    userId: auth.currentUser.uid,
+                    date: document.getElementById('routeDate').value || "Sin fecha",
+                    clientIds: sel.map(c => c.id)
+                });
+                cargarHistorialRutas();
+            }
+        }
+    };
+
+    window.loadSavedRoute = async (id) => {
+        const snap = await getDocs(query(collection(db, "rutas"), where("userId", "==", auth.currentUser.uid)));
+        const r = snap.docs.find(d => d.id === id).data();
+        clients.forEach((c, i) => {
+            const cb = document.getElementById('c' + i);
+            if(cb) {
+                cb.checked = r.clientIds.includes(c.id);
+                document.getElementById('div-c' + i).classList.toggle('client-selected', cb.checked);
+                markers[i].setIcon(cb.checked ? iconSelected : getClientIcon(c));
+            }
+        });
+        window.createRoute(true);
     };
 
     window.editCli = (id) => { editingClientId = id; renderClientes(); };
@@ -232,57 +284,21 @@
     window.saveEdit = async (id) => {
         await updateDoc(doc(db, "clientes", id), { 
             name: document.getElementById('ed_n').value, 
-            address: document.getElementById('ed_a').value,
-            notes: document.getElementById('ed_notes').value
+            address: document.getElementById('ed_a').value, 
+            notes: document.getElementById('ed_nt').value 
         });
-        editingClientId = null; cargarDatos();
+        editingClientId = null; cargarClientes();
     };
-
-    window.createRoute = async () => {
-        let sel = clients.filter((c,i) => document.getElementById('c'+i)?.checked);
-        if(sel.length < 1) return alert("Selecciona paradas");
-        const date = document.getElementById('routeDate').value || new Date().toLocaleDateString();
-        const pos = await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j));
-        const coords = [[pos.coords.latitude, pos.coords.longitude], ...sel.map(c => [c.lat, c.lng])];
-        const str = coords.map(c => `${c[1]},${c[0]}`).join(';');
-        const res = await fetch(`https://router.project-osrm.org/trip/v1/driving/${str}?source=first&destination=last&roundtrip=false&overview=full&geometries=geojson`);
-        const data = await res.json();
-        if(data.trips) {
-            if(routeLine) map.removeLayer(routeLine);
-            routeLine = L.geoJSON(data.trips[0].geometry, {style: {color: '#6366f1', weight: 5}}).addTo(map);
-            map.fitBounds(routeLine.getBounds());
-            const indices = data.waypoints.sort((a,b)=>a.waypoint_index - b.waypoint_index).map(w => w.waypoint_index);
-            lastRouteClients = indices.slice(1).map(idx => sel[idx-1]);
-            await addDoc(collection(db, "rutas"), { userId: auth.currentUser.uid, date, clientIds: sel.map(c => c.id), optimizedOrderIds: lastRouteClients.map(c => c.id) });
-            cargarHistorialRutas();
-            alert("Ruta azul guardada");
-        }
-    };
-
-    window.cargarRutaGuardada = async (id) => {
-        const snap = await getDocs(query(collection(db, "rutas"), where("userId", "==", auth.currentUser.uid)));
-        const ruta = snap.docs.find(d => d.id === id).data();
-        clients.forEach((c, i) => {
-            const cb = document.getElementById('c' + i);
-            if(cb) {
-                cb.checked = ruta.clientIds.includes(c.id);
-                document.getElementById('div-c' + i).classList.toggle('client-selected', cb.checked);
-                markers[i].setIcon(getIcon(c, cb.checked));
-            }
-        });
-        lastRouteClients = ruta.optimizedOrderIds.map(id => clients.find(cl => cl.id === id)).filter(x => x);
-        alert("Ruta cargada. Pulsa Google Optimizado si quieres navegar.");
-    };
-
-    window.deleteCli = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db, "clientes", id)); cargarDatos(); } };
-    window.eliminarRuta = async (id) => { if(confirm("¿Eliminar historial?")) { await deleteDoc(doc(db, "rutas", id)); cargarHistorialRutas(); } };
+    window.deleteCli = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"clientes",id)); cargarClientes(); } };
+    window.deleteRoute = async (id) => { if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarHistorialRutas(); } };
 
     document.getElementById('btnLogin').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(e => alert(e.message));
     document.getElementById('btnLogout').onclick = () => signOut(auth);
     document.getElementById('btnAddClient').onclick = window.addClient;
-    document.getElementById('btnCreateRoute').onclick = window.createRoute;
-    document.getElementById('btnRutaOrdenEstricto').onclick = () => window.abrirGoogleMapsOficial(false);
-    document.getElementById('btnGoogleMaps').onclick = () => window.abrirGoogleMapsOficial(true);
+    document.getElementById('btnCreateRoute').onclick = () => window.createRoute(false);
+    document.getElementById('btnRutaOrdenEstricto').onclick = () => window.enviarAGoogle(false);
+    document.getElementById('btnGoogleOptimizado').onclick = () => window.enviarAGoogle(true);
+    document.getElementById('startOption').onchange = (e) => document.getElementById('startAddress').style.display = e.target.value === "manual" ? "block" : "none";
     document.getElementById('btnClearRoute').onclick = () => { if(routeLine) map.removeLayer(routeLine); };
 </script>
 </body>

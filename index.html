@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="utf-8" />
-    <title>Rutas PRO V2 - Sistema Completo</title>
+    <title>Rutas PRO V2 - Mapa Interactivo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -27,11 +27,12 @@
         .deleteBtn { background:#ef4444; }
         .saveBtn { background: #22c55e; }
         
-        .client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; position: relative; }
+        .client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; position: relative; transition: background 0.3s; }
+        .client-selected { background: #e0f2fe; border-color: #7dd3fc; }
         .edit-mode { border: 2px solid var(--primary); background: #f0f9ff; }
         .admin-panel { border: 2px solid var(--admin); background: #f5f3ff; }
         .hidden { display: none; }
-        input[type="checkbox"] { width: auto; transform: scale(1.3); margin-right: 10px; }
+        input[type="checkbox"] { width: auto; transform: scale(1.3); margin-right: 10px; cursor: pointer; }
         .routeItem { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; background:#f1f5f9; padding:8px 12px; border-radius:10px; }
     </style>
 </head>
@@ -158,20 +159,40 @@
         cargarRutas();
     }
 
+    // NUEVA FUNCIÓN: Toggle desde el mapa
+    window.toggleCliente = (index) => {
+        const cb = document.getElementById('c' + index);
+        const div = document.getElementById('div-c' + index);
+        if(cb) {
+            cb.checked = !cb.checked;
+            if(div) {
+                cb.checked ? div.classList.add('client-selected') : div.classList.remove('client-selected');
+            }
+        }
+    };
+
     function renderClientes() {
         const container = document.getElementById('clientList');
         container.innerHTML = "";
         markers.forEach(m => map.removeLayer(m)); markers = [];
         clients.forEach((c, i) => {
             let div = document.createElement('div');
+            div.id = 'div-c' + i;
             div.className = 'client' + (editingClientId === c.id ? ' edit-mode' : '');
+            
             if(editingClientId === c.id) {
                 div.innerHTML = `<input id="ed_n" value="${c.name}" /><input id="ed_a" value="${c.address||''}" /><textarea id="ed_nt">${c.notes||''}</textarea><button class="smallBtn saveBtn" onclick="window.saveEdit('${c.id}')">OK</button><button class="smallBtn" onclick="window.cancelEdit()">X</button>`;
             } else {
-                div.innerHTML = `<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"><div style="flex:1"><b>${c.name}</b><br><small>${c.address || c.lat.toFixed(3)+','+c.lng.toFixed(3)}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick="window.editCli('${c.id}')">✏️</button><button class="smallBtn deleteBtn" onclick="window.deleteCli('${c.id}')">🗑️</button></div>`;
+                div.innerHTML = `<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}" onchange="this.parentElement.parentElement.classList.toggle('client-selected', this.checked)"><div style="flex:1"><b>${c.name}</b><br><small>${c.address || c.lat.toFixed(3)+','+c.lng.toFixed(3)}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick="window.editCli('${c.id}')">✏️</button><button class="smallBtn deleteBtn" onclick="window.deleteCli('${c.id}')">🗑️</button></div>`;
             }
             container.appendChild(div);
-            if(c.lat && c.lng) markers.push(L.marker([c.lat, c.lng], {icon: getIcon(c)}).addTo(map).bindPopup(c.name));
+            
+            if(c.lat && c.lng) {
+                let m = L.marker([c.lat, c.lng], {icon: getIcon(c)}).addTo(map).bindPopup(`<b>${c.name}</b><br><button onclick="window.toggleCliente(${i})" style="padding:4px; margin-top:5px; font-size:10px; width:auto">Seleccionar</button>`);
+                // Evento al hacer clic directo en el icono
+                m.on('dblclick', () => window.toggleCliente(i)); 
+                markers.push(m);
+            }
         });
         document.getElementById('stats').innerText = clients.length;
     }
@@ -244,18 +265,15 @@
     window.navGoogle = (opt) => {
         let sel = clients.filter((c,i) => document.getElementById('c'+i)?.checked);
         if(sel.length < 1) return alert("Selecciona clientes");
-        
         let dest, waypoints;
-        if(opt && lastRouteCoords.length > 1) { // OPTIMIZADO
+        if(opt && lastRouteCoords.length > 1) {
             dest = lastRouteCoords[lastRouteCoords.length-1];
             waypoints = lastRouteClients.slice(0, -1).map(c => `${c.lat},${c.lng}`).join('|');
-        } else { // ORDEN LISTA
+        } else {
             dest = [sel[sel.length-1].lat, sel[sel.length-1].lng];
             waypoints = sel.slice(0, -1).map(c => `${c.lat},${c.lng}`).join('|');
         }
-        
         let url = `https://www.google.com/maps/dir/?api=1&destination=${dest[0]},${dest[1]}&waypoints=${waypoints}&travelmode=driving`;
-        if(!opt) url += "&dir_action=navigate";
         window.open(url, '_blank');
     };
 

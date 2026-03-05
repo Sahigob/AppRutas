@@ -125,10 +125,10 @@ function getClientIcon(cliente){
   return iconNormal;
 }
 
-let map = L.map('map').setView([40.4168,-3.7038],6);
+let map = L.map('map').setView([40.4168,-3.7038],12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-// EXPORTAR FUNCIONES AL WINDOW PARA QUE LOS BOTONES HTML LAS VEAN
+// --- FUNCIONES GLOBALES ---
 window.actualizarColorMarcador = function(index) {
     const cb = document.getElementById('c' + index);
     const marker = markers[index];
@@ -139,13 +139,11 @@ window.actualizarColorMarcador = function(index) {
 
 window.editClient = (id) => { editingClientId = id; renderClientes(); };
 window.cancelEdit = () => { editingClientId = null; renderClientes(); };
-
 window.saveEditClient = async (id) => {
     const n = document.getElementById('edit_name').value.trim(), a = document.getElementById('edit_address').value.trim(), nt = document.getElementById('edit_notes').value.trim();
     await updateDoc(doc(db, "clientes", id), { name: n, address: a, notes: nt });
     editingClientId = null; cargarClientes();
 };
-
 window.deleteClient = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"clientes",id)); cargarClientes(); } };
 window.deleteRoute = async (id) => { if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
 
@@ -161,7 +159,7 @@ window.loadRoute = async function(id){
     window.createRoute(true);
 }
 
-// LÓGICA DE SESIÓN
+// --- LÓGICA CORE ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
         document.getElementById('authSection').classList.add('hidden');
@@ -176,8 +174,7 @@ onAuthStateChanged(auth, (user) => {
 
 async function cargarClientes(){ 
     if(!auth.currentUser) return;
-    const q = query(collection(db, "clientes"), where("userId", "==", auth.currentUser.uid));
-    const snapshot = await getDocs(q); 
+    const snapshot = await getDocs(query(collection(db, "clientes"), where("userId", "==", auth.currentUser.uid))); 
     clients = snapshot.docs.map(d=>({...d.data(),id:d.id})).filter(c=>c.name); 
     clients.sort((a,b)=>a.name.localeCompare(b.name)); 
     renderClientes(); 
@@ -189,7 +186,6 @@ function renderClientes(){
     clients.forEach((c,i)=>{ 
         let div=document.createElement('div'); div.className='client'; 
         if(editingClientId === c.id) {
-            div.classList.add('edit-mode');
             div.innerHTML = `<input id="edit_name" value="${c.name||''}" /><input id="edit_address" value="${c.address||''}" /><textarea id="edit_notes">${c.notes||''}</textarea><div style="display:flex; gap:8px"><button class="smallBtn saveBtn" onclick="saveEditClient('${c.id}')">💾</button><button class="smallBtn" onclick="cancelEdit()">❌</button></div>`;
         } else {
             div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}" onchange="actualizarColorMarcador(${i})"> <div style="flex:1"><b>${c.name}</b><br><small>${c.address || 'GPS'}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick='editClient("${c.id}")'>✏️ Editar</button><button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️ Borrar</button></div>`;
@@ -205,7 +201,6 @@ function renderClientes(){
     document.getElementById('stats').innerHTML=clients.length; 
 }
 
-// RESTO DE FUNCIONES (Ruta, Navegación, Auth)
 window.createRoute = async function(isLoading = false){ 
     let sel=clients.filter((c,i)=>document.getElementById('c'+i)?.checked); 
     if(sel.length<1) return alert("Selecciona clientes"); 
@@ -252,8 +247,9 @@ window.navGoogle = (opt) => {
 };
 
 document.getElementById('btnLogin').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('email').value.trim(), document.getElementById('password').value).catch(e => alert(e.message));
-document.getElementById('btnRegister').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value.trim(), document.getElementById('password').value).then(()=>alert("Creada")).catch(e => alert(e.message));
+document.getElementById('btnRegister').onclick = () => createUserWithEmailAndPassword(auth, document.getElementById('email').value.trim(), document.getElementById('password').value).then(()=>alert("Cuenta Creada")).catch(e => alert(e.message));
 document.getElementById('btnLogout').onclick = () => signOut(auth);
+
 document.getElementById('btnAddClient').onclick = async () => {
     const name=document.getElementById('name').value, address=document.getElementById('address').value;
     let lat, lng;
@@ -280,6 +276,7 @@ document.getElementById('btnCreateRoute').onclick = () => window.createRoute(fal
 document.getElementById('btnRutaOrdenEstricto').onclick = () => window.navGoogle(false);
 document.getElementById('btnGoogleMaps').onclick = () => window.navGoogle(true);
 document.getElementById('btnWaze').onclick = () => {
+    if(lastRouteCoords.length < 2) return alert("Crea ruta");
     const dest = lastRouteCoords[lastRouteCoords.length-1];
     window.open(`https://waze.com/ul?ll=${dest[0]},${dest[1]}&navigate=yes`, '_blank');
 };

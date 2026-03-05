@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v3.1 - Coordenadas activadas</title>
+<title>Rutas Comerciales PRO v3.5 - FULL</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -22,6 +22,7 @@ button:hover { background: var(--primary-dark); }
 .deleteBtn { background:#ef4444; }
 .saveBtn { background: #22c55e; }
 input, select, textarea { width:100%; margin:8px 0; padding:12px; border-radius:10px; border:1px solid var(--border); box-sizing: border-box; font-size: 14px; }
+.coord-row { display: flex; gap: 8px; }
 .client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; }
 .edit-mode { border: 2px solid var(--primary); background: #f0f9ff; }
 .stats-badge { background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
@@ -44,8 +45,12 @@ input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px;
   <div class="card">
     <h3>👥 Gestión de Cliente</h3>
     <input id="name" placeholder="Nombre cliente" />
-    <input id="address" placeholder="Dirección o Coordenadas (lat, lng)" />
-    <textarea id="notes" placeholder="Notas (ej: Hotel, Restaurante...)" rows="2"></textarea>
+    <input id="address" placeholder="Dirección manual" />
+    <div class="coord-row">
+        <input id="manualLat" placeholder="Latitud" />
+        <input id="manualLng" placeholder="Longitud" />
+    </div>
+    <textarea id="notes" placeholder="Notas (Hotel, Restaurante...)" rows="2"></textarea>
     <button id="btnAddClient">➕ Guardar cliente</button>
   </div>
 
@@ -92,6 +97,7 @@ let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRo
 let editingClientId = null;
 let currentStartOption = "gps";
 
+// ICONOS
 const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
 const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[38,38], iconAnchor:[19,38] });
 const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[38,38], iconAnchor:[19,38] });
@@ -108,15 +114,7 @@ function getClientIcon(cliente){
 let map = L.map('map').setView([40.4168,-3.7038],12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-async function geocode(addr){ 
-    // Comprobar si son coordenadas directas: "lat, lng"
-    const coordsMatch = addr.match(/^([-+]?\d*\.\d+|\d+),\s*([-+]?\d*\.\d+|\d+)$/);
-    if(coordsMatch) return { lat: parseFloat(coordsMatch[1]), lng: parseFloat(coordsMatch[2]) };
-
-    let res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`); 
-    let data=await res.json(); 
-    return data.length>0 ? {lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon)} : null; 
-}
+async function geocode(addr){ let res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`); let data=await res.json(); return data.length>0 ? {lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon)} : null; }
 
 async function cargarClientes(){ 
     const snapshot=await getDocs(coleccionClientes); 
@@ -145,7 +143,7 @@ function renderClientes(){
             div.classList.add('edit-mode');
             div.innerHTML = `<input id="edit_name" value="${c.name||''}" /><input id="edit_address" value="${c.address||''}" /><textarea id="edit_notes">${c.notes||''}</textarea><div style="display:flex; gap:8px"><button class="smallBtn saveBtn" onclick="saveEditClient('${c.id}')">💾</button><button class="smallBtn" onclick="cancelEdit()">❌</button></div>`;
         } else {
-            div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div style="flex:1"><b>${c.name}</b><br><small>${c.address}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick='editClient("${c.id}")'>✏️</button><button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️</button></div>`;
+            div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div style="flex:1"><b>${c.name}</b><br><small>${c.address || 'Coord: '+c.lat.toFixed(3)}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick='editClient("${c.id}")'>✏️ Editar</button><button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️ Borrar</button></div>`;
         }
         container.appendChild(div);
         if(c.lat && c.lng){ 
@@ -158,6 +156,7 @@ function renderClientes(){
     document.getElementById('stats').innerHTML=clients.length; 
 }
 
+// FUNCIONES DE EDICIÓN
 window.editClient = function(id) { editingClientId = id; renderClientes(); }
 window.cancelEdit = function() { editingClientId = null; renderClientes(); }
 window.saveEditClient = async function(id) {
@@ -169,32 +168,30 @@ window.saveEditClient = async function(id) {
         if(co) { updateData.lat = co.lat; updateData.lng = co.lng; }
         await updateDoc(doc(db, "clientes", id), updateData);
         editingClientId = null; cargarClientes();
-    } catch(e) { alert("Error: " + e.message); }
+    } catch(e) { alert("Error al actualizar"); }
 }
 
 window.deleteClient = async function(id) { if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"clientes",id)); cargarClientes(); } };
 window.deleteRoute = async function(id) { if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
 
+// GUARDAR CON COORDENADAS + RESET
 window.addClient = async function() { 
-    const inputName = document.getElementById('name');
-    const inputAddr = document.getElementById('address');
-    const inputNotes = document.getElementById('notes');
-    
-    const name = inputName.value.trim();
-    const address = inputAddr.value.trim();
-    const notes = inputNotes.value.trim();
+    const inName=document.getElementById('name'), inAddr=document.getElementById('address'), inLat=document.getElementById('manualLat'), inLng=document.getElementById('manualLng'), inNotes=document.getElementById('notes');
+    const name=inName.value.trim(), address=inAddr.value.trim(), mLat=inLat.value.trim(), mLng=inLng.value.trim();
 
-    if(!name || !address) return alert("Nombre y Dirección/Coord son obligatorios");
+    if(!name) return alert("Pon el nombre");
+    let finalLat, finalLng;
 
-    const co = await geocode(address); 
-    if(!co) return alert("No se pudo ubicar esa dirección o coordenadas");
+    if(mLat && mLng) { finalLat=parseFloat(mLat); finalLng=parseFloat(mLng); }
+    else if(address) { const co=await geocode(address); if(!co)return alert("No hallado"); finalLat=co.lat; finalLng=co.lng; }
+    else return alert("Pon dirección o coordenadas");
 
     try {
-        await addDoc(coleccionClientes, { name, address, lat: co.lat, lng: co.lng, notes }); 
+        await addDoc(coleccionClientes, { name, address, lat: finalLat, lng: finalLng, notes: inNotes.value }); 
         alert("✅ Cliente guardado");
-        inputName.value = ""; inputAddr.value = ""; inputNotes.value = ""; inputName.focus();
+        inName.value=""; inAddr.value=""; inLat.value=""; inLng.value=""; inNotes.value=""; inName.focus();
         cargarClientes();
-    } catch(e) { alert("Error: " + e.message); }
+    } catch(e) { alert("Error al guardar"); }
 }
 
 window.createRoute = async function(isLoading = false){ 
@@ -245,9 +242,8 @@ window.enviarRutaGoogleOrdenEstricto = function() {
 window.login = async function() { 
     try { 
         await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); 
-        alert("✅ Login correcto"); 
-        cargarClientes(); cargarRutas(); showUserPosition(); 
-    } catch(e) { alert("❌ Error"); }
+        alert("✅ Login correcto"); cargarClientes(); cargarRutas(); showUserPosition(); 
+    } catch(e) { alert("❌ Error: " + e.message); }
 }
 
 let userMarker = null;

@@ -155,6 +155,8 @@ function renderClientes(){
         if(c.lat && c.lng){ 
             const defaultIcon = getClientIcon(c);
             let m = L.marker([c.lat,c.lng], {icon: defaultIcon}).addTo(map).bindPopup(c.name);
+            
+            // Logica del marcador: al clicar cambia icono y checkbox
             m.on('click', () => { 
                 const cb = document.getElementById('c'+i); 
                 if(cb){ 
@@ -162,6 +164,17 @@ function renderClientes(){
                     m.setIcon(cb.checked ? iconPin : defaultIcon); 
                 } 
             });
+
+            // Logica del checkbox: al marcar cambia el icono del marcador
+            setTimeout(() => {
+                const cb = document.getElementById('c'+i);
+                if(cb) {
+                    cb.addEventListener('change', (e) => {
+                        m.setIcon(e.target.checked ? iconPin : defaultIcon);
+                    });
+                }
+            }, 100);
+
             markers.push(m);
         }
     }); 
@@ -211,7 +224,7 @@ window.saveEditClient = async function(id) {
 window.deleteClient = async function(id) { if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"clientes",id)); cargarClientes(); } };
 window.deleteRoute = async function(id) { if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
 
-// Lógica de cálculo de distancia
+// Lógica de cálculo de distancia euclidiana
 function getDistance(lat1, lon1, lat2, lon2) {
     return Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2));
 }
@@ -228,7 +241,7 @@ window.createRoute = async function(isLoading = false){
         let ad=document.getElementById('startAddress').value.trim(); const c=await geocode(ad); if(!c) return alert("Salida no encontrada"); sLat=c.lat; sLng=c.lng; 
     }
 
-    // --- ORDENACIÓN: EL MÁS CERCANO PRIMERO ---
+    // --- LÓGICA DE ORDENACIÓN POR PROXIMIDAD (VECINO MÁS CERCANO) ---
     let orderedRoute = [];
     let currentLat = sLat;
     let currentLng = sLng;
@@ -300,30 +313,13 @@ window.loadRoute = async function(id){
     window.createRoute(true);
 }
 
-// --- FUNCIÓN DE NAVEGACIÓN CORREGIDA PARA GOOGLE MAPS ---
 window.enviarRutaGoogleOrdenEstricto = function() {
-    if (lastRouteClients.length === 0) return alert("Primero crea una ruta azul.");
-    
-    let origin = "";
-    if (currentStartOption === "gps") {
-        origin = ""; // Google usará ubicación actual automáticamente si se deja vacío
-    } else {
-        let startAddr = document.getElementById('startAddress').value.trim();
-        origin = startAddr ? encodeURIComponent(startAddr) : "";
-    }
-
-    // Destino: el último cliente de la ruta ordenada
+    if (lastRouteCoords.length < 2) return alert("Crea una ruta azul primero");
+    let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
     let lastClient = lastRouteClients[lastRouteClients.length - 1];
-    let destination = `${lastClient.lat},${lastClient.lng}`;
-
-    // Waypoints: todos los clientes intermedios
-    let waypointsArr = lastRouteClients.slice(0, -1).map(c => `${c.lat},${c.lng}`);
-    let waypoints = waypointsArr.join('|');
-
-    // Nueva URL con formato Universal Links (más fiable)
-    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
-    
-    window.open(url, '_blank');
+    let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastClient.lat},${lastClient.lng}`;
+    let waypoints = lastRouteClients.slice(0, -1).map(c => c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`).join('|');
+    window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, '_blank');
 }
 
 window.login = async function() { 

@@ -94,7 +94,7 @@ input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px;
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyByi9lTT4kN4YbD8cneKLmTm05RzCAgPhI",
@@ -108,6 +108,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+
+// ESTA ES LA LÍNEA QUE DEBES AÑADIR:
+setPersistence(auth, browserSessionPersistence);
 
 let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRouteClients=[];
 let editingClientId = null;
@@ -268,11 +271,42 @@ window.createRoute = async function(isLoading = false){
             routeLine=L.geoJSON(data.trips[0].geometry,{style:{color:'#0ea5e9',weight:5}}).addTo(map); 
             map.fitBounds(routeLine.getBounds());
             lastRouteCoords.slice(1).forEach(c=>redMarkers.push(L.circleMarker(c,{radius:6,color:'red',fillOpacity:1}).addTo(map)));
-            if(!isLoading) { await addDoc(collection(db, "rutas"),{date:document.getElementById('routeDate').value || "S/F", clients:sel.map(c=>c.id), userId: auth.currentUser.uid }); cargarRutas(); }
+            
+            if(!isLoading) { 
+                await addDoc(collection(db, "rutas"), {
+                    date: document.getElementById('routeDate').value || "S/F", 
+                    clients: sel.map(c => c.id), 
+                    userId: auth.currentUser.uid 
+                }); 
+                cargarRutas(); 
+            }
         }
-    } catch(e) { console.log(e); }
-}
+    } catch(e) { console.error(e); }
+};
 
+window.loadRoute = async function(id){ 
+    const q = query(collection(db, "rutas"), where("userId", "==", auth.currentUser.uid));
+    const sn = await getDocs(q); 
+    const rd = sn.docs.find(d=>d.id===id); if(!rd) return;
+    const d=rd.data(); 
+    clients.forEach((c, i) => { 
+        const cb = document.getElementById('c'+i); 
+        if(cb) { 
+            cb.checked = d.clients.includes(c.id); 
+            if(markers[i]) markers[i].setIcon(cb.checked ? iconPin : getClientIcon(c)); 
+        } 
+    });
+    window.createRoute(true);
+};
+
+window.navGoogle = (opt) => {
+    if(lastRouteCoords.length < 2) return alert("Crea ruta primero");
+    let waypoints = lastRouteClients.map(c => `${c.lat},${c.lng}`).join('|');
+    let dest = `${lastRouteCoords[lastRouteCoords.length-1][0]},${lastRouteCoords[lastRouteCoords.length-1][1]}`;
+    let url = `https://www.google.com/maps/dir/?api=1&destination=${dest}&waypoints=${waypoints}&travelmode=driving`;
+    if(!opt) url += "&dir_action=navigate";
+    window.open(url, '_blank');
+};
 window.loadRoute = async function(id){ 
     const q = query(collection(db, "rutas"), where("userId", "==", auth.currentUser.uid));
     const sn = await getDocs(q); 

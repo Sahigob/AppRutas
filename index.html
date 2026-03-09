@@ -7,29 +7,214 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 <style>
-:root { --primary: #0ea5e9; --primary-dark: #0284c7; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; --success: #10b981; }
-body { margin:0; font-family: 'Segoe UI', system-ui, sans-serif; display:flex; flex-direction: row; height:100vh; background: var(--bg); color: var(--text); }
-#map { flex:1; height: 100%; z-index: 1; }
-#panel { width:400px; padding:24px; overflow-y:auto; background: var(--card-bg); border-left: 1px solid var(--border); box-sizing: border-box; box-shadow: -4px 0 15px rgba(0,0,0,0.05); z-index: 10; }
-@media (max-width: 768px) { body { flex-direction: column; } #map { flex: none; height: 35vh; } #panel { width: 100%; flex: 1; border-left: none; border-top: 2px solid var(--border); } }
-h3 { margin: 24px 0 12px 0; font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-h3::before { content: ''; width: 4px; height: 18px; background: var(--primary); border-radius: 4px; }
-.card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 166px; margin-bottom: 16px; padding: 16px; }
-button { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:none; background: var(--primary); color:white; font-weight:600; cursor:pointer; font-size: 14px; transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
-button:hover { background: var(--primary-dark); }
+:root { 
+    --primary: #0ea5e9; 
+    --primary-dark: #0284c7; 
+    --bg: #f1f5f9; 
+    --card-bg: #ffffff; 
+    --text: #1e293b; 
+    --border: #e2e8f0; 
+    --success: #10b981; 
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+body { 
+    margin:0; 
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+    display:flex; 
+    flex-direction: row; 
+    height:100vh; 
+    background: var(--bg); 
+    color: var(--text); 
+    overflow: hidden;
+}
+
+#map { 
+    flex:1; 
+    height: 100%; 
+    z-index: 1; 
+}
+
+#panel { 
+    width:400px; 
+    padding:20px; 
+    overflow-y:auto; 
+    background: var(--card-bg); 
+    border-left: 1px solid var(--border); 
+    box-sizing: border-box; 
+    box-shadow: -4px 0 15px rgba(0,0,0,0.08); 
+    z-index: 10; 
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+/* Ajuste para mantener vista PC en Móvil */
+@media (max-width: 768px) { 
+    body { 
+        flex-direction: row !important; /* Mantiene el mapa al lado del panel */
+    } 
+    #panel { 
+        width: 85%; /* En móviles pequeños el panel ocupa más espacio pero sigue al lado */
+        max-width: 320px;
+        padding: 15px;
+    } 
+    #map {
+        flex: 1;
+    }
+}
+
+h3 { 
+    margin: 20px 0 12px 0; 
+    font-size: 1rem; 
+    font-weight: 700; 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    color: #334155;
+}
+
+h3::before { 
+    content: ''; 
+    width: 4px; 
+    height: 18px; 
+    background: var(--primary); 
+    border-radius: 4px; 
+}
+
+.card { 
+    background: white; 
+    border: 1px solid var(--border); 
+    border-radius: 12px; 
+    padding: 16px; 
+    margin-bottom: 16px; 
+    box-shadow: var(--shadow);
+}
+
+button { 
+    width:100%; 
+    padding:12px; 
+    margin:8px 0; 
+    border-radius:10px; 
+    border:none; 
+    background: var(--primary); 
+    color:white; 
+    font-weight:600; 
+    cursor:pointer; 
+    font-size: 13px; 
+    transition: all 0.2s ease; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    gap: 8px; 
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+button:hover { 
+    background: var(--primary-dark); 
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
 .btn-register { background: var(--success); }
-#btnRutaOrdenEstricto { background-color: #ffc107; color: #212529; border: 2px solid #e0a800; }
-.smallBtn { padding:6px 12px; font-size:12px; margin: 4px 2px; width: auto; display: inline-flex; }
+.btn-register:hover { background: #059669; }
+
+#btnRutaOrdenEstricto { 
+    background-color: #f59e0b; 
+    color: white; 
+}
+#btnRutaOrdenEstricto:hover { background-color: #d97706; }
+
+.smallBtn { 
+    padding:6px 12px; 
+    font-size:11px; 
+    margin: 4px 2px; 
+    width: auto; 
+    display: inline-flex; 
+    text-transform: none;
+}
+
 .deleteBtn { background:#ef4444; }
-.saveBtn { background: #22c55e; }
-input, select, textarea { width:100%; margin:8px 0; padding:12px; border-radius:10px; border:1px solid var(--border); box-sizing: border-box; font-size: 14px; }
+.deleteBtn:hover { background:#dc2626; }
+
+.saveBtn { background: #10b981; }
+
+input, select, textarea { 
+    width:100%; 
+    margin:8px 0; 
+    padding:11px; 
+    border-radius:10px; 
+    border: 1px solid var(--border); 
+    box-sizing: border-box; 
+    font-size: 14px; 
+    background: #f8fafc;
+    transition: border 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: white;
+}
+
 .coord-row { display: flex; gap: 8px; }
-.client { padding:12px; border: 1px solid var(--border); background: white; margin-bottom: 8px; border-radius: 10px; }
-.edit-mode { border: 2px solid var(--primary); background: #f0f9ff; }
-.stats-badge { background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
-input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px; cursor: pointer; }
-.routeItem { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; background:#f1f5f9; padding:8px 12px; border-radius:10px; border:1px solid #e2e8f0; }
+
+.client { 
+    padding:12px; 
+    border: 1px solid var(--border); 
+    background: #ffffff; 
+    margin-bottom: 10px; 
+    border-radius: 12px; 
+    transition: all 0.2s;
+}
+.client:hover {
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.edit-mode { 
+    border: 2px solid var(--primary); 
+    background: #f0f9ff; 
+}
+
+.stats-badge { 
+    background: #0ea5e9; 
+    color: white; 
+    padding: 2px 10px; 
+    border-radius: 20px; 
+    font-size: 0.75rem; 
+    margin-left: auto;
+}
+
+input[type="checkbox"] { 
+    width: auto; 
+    accent-color: var(--primary);
+    transform: scale(1.2); 
+    margin-right: 12px; 
+    cursor: pointer; 
+}
+
+.routeItem { 
+    display:flex; 
+    justify-content:space-between; 
+    align-items:center; 
+    margin-bottom:8px; 
+    font-size:12px; 
+    background:#f1f5f9; 
+    padding:8px 12px; 
+    border-radius:10px; 
+    border:1px solid #e2e8f0; 
+}
+
 .hidden { display: none; }
+
+/* Scrollbar personalizado para el panel */
+#panel::-webkit-scrollbar { width: 6px; }
+#panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 </style>
 </head>
 <body>
@@ -46,8 +231,8 @@ input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px;
   </div>
 
   <div id="mainSection" class="hidden">
-    <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 10px;">
-        <span id="userDisplay" style="font-size: 11px; color: grey; font-weight: bold;"></span>
+    <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid var(--border);">
+        <span id="userDisplay" style="font-size: 11px; color: #64748b; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;"></span>
         <button id="btnLogout" class="deleteBtn smallBtn">Salir</button>
     </div>
 
@@ -65,9 +250,9 @@ input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px;
 
     <div class="card">
       <h3>🧭 Planificador de Ruta</h3>
-      <label>Fecha:</label>
+      <label style="font-size: 12px; font-weight: 600; color: #64748b;">Fecha:</label>
       <input type="date" id="routeDate" />
-      <label>Salida:</label>
+      <label style="font-size: 12px; font-weight: 600; color: #64748b;">Salida:</label>
       <select id="startOption">
         <option value="gps">📍 Mi ubicación actual</option>
         <option value="manual">✏️ Dirección manual</option>
@@ -81,11 +266,11 @@ input[type="checkbox"] { width: auto; transform: scale(1.4); margin-right: 12px;
       <h3>🚗 Navegación</h3>
       <button id="btnRutaOrdenEstricto"><i class="fas fa-route"></i> Google (Orden de Lista)</button>
       <button id="btnGoogleMaps" style="background: #22c55e;">🌐 Google (Optimizado)</button>
-      <button id="btnWaze" style="background: #1e40af;">🛣️ Abrir Waze</button>
-      <button id="btnClearRoute" style="background: #64748b;">🧹 Limpiar mapa</button>
+      <button id="btnWaze" style="background: #3b82f6;">🛣️ Abrir Waze</button>
+      <button id="btnClearRoute" style="background: #94a3b8;">🧹 Limpiar mapa</button>
     </div>
 
-    <h3>📊 Clientes <span id="stats" class="stats-badge">0</span></h3>
+    <h3 style="justify-content: space-between;">📊 Clientes <span id="stats" class="stats-badge">0</span></h3>
     <div id="clientList"></div>
   </div>
 </div>
@@ -113,7 +298,6 @@ let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRo
 let editingClientId = null;
 let currentStartOption = "gps";
 
-// ICONOS
 const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
 const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[38,38], iconAnchor:[19,38] });
 const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[38,38], iconAnchor:[19,38] });
@@ -181,7 +365,7 @@ function renderClientes(){
             div.classList.add('edit-mode');
             div.innerHTML = `<input id="edit_name" value="${c.name||''}" /><input id="edit_address" value="${c.address||''}" /><textarea id="edit_notes">${c.notes||''}</textarea><div style="display:flex; gap:8px"><button class="smallBtn saveBtn" onclick="saveEditClient('${c.id}')">💾</button><button class="smallBtn" onclick="cancelEdit()">❌</button></div>`;
         } else {
-            div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div style="flex:1"><b>${c.name}</b><br><small>${c.address || 'GPS'}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick='editClient("${c.id}")'>✏️ Editar</button><button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️ Borrar</button></div>`;
+            div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div style="flex:1"><b>${c.name}</b><br><small style="color: #64748b;">${c.address || 'GPS'}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick='editClient("${c.id}")'>✏️ Editar</button><button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️ Borrar</button></div>`;
         }
         container.appendChild(div);
 
@@ -260,7 +444,6 @@ window.createRoute = async function(isLoading = false){
         const res = await fetch(`https://router.project-osrm.org/trip/v1/driving/${strCoords}?source=first&destination=last&roundtrip=false&overview=full&geometries=geojson`);
         const data = await res.json();
         if(data.trips) {
-            // INTEGRACIÓN ORDEN ESTRICTO: Guardar clientes en el orden final de la ruta
             lastRouteCoords = data.waypoints.sort((a, b) => a.waypoint_index - b.waypoint_index).map(w => [w.location[1], w.location[0]]);
             lastRouteClients = lastRouteCoords.slice(1).map(coord => sel.find(c => c.lat.toFixed(4) == coord[0].toFixed(4) && c.lng.toFixed(4) == coord[1].toFixed(4))).filter(c => c);
 
@@ -288,31 +471,13 @@ window.loadRoute = async function(id){
     window.createRoute(true);
 }
 
-// FUNCIÓN PRINCIPAL DE NAVEGACIÓN (ORDEN ESTRICTO)
 window.enviarRutaGoogleOrdenEstricto = function() {
     if (lastRouteCoords.length < 2) return alert("Crea una ruta azul primero");
-
-    let origin = (currentStartOption === "gps") 
-        ? "" 
-        : encodeURIComponent(document.getElementById('startAddress').value);
-
+    let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
     let lastClient = lastRouteClients[lastRouteClients.length - 1];
-
-    let destination = (lastClient && lastClient.address)
-        ? encodeURIComponent(lastClient.address)
-        : `${lastRouteCoords[lastRouteCoords.length-1][0]},${lastRouteCoords[lastRouteCoords.length-1][1]}`;
-
-    let waypoints = lastRouteClients
-        .slice(0, -1)
-        .map(c => c.address 
-            ? encodeURIComponent(c.address) 
-            : `${c.lat},${c.lng}`)
-        .join('|');
-
-    window.open(
-        `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`,
-        '_blank'
-    );
+    let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastRouteCoords[lastRouteCoords.length-1][0]},${lastRouteCoords[lastRouteCoords.length-1][1]}`;
+    let waypoints = lastRouteClients.slice(0, -1).map(c => c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`).join('|');
+    window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, '_blank');
 }
 
 window.navGoogle = (opt) => {
@@ -347,10 +512,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('btnLogout').onclick = () => signOut(auth);
     document.getElementById('btnAddClient').onclick = window.addClient;
     document.getElementById('btnCreateRoute').onclick = () => window.createRoute(false);
-    
-    // Botón de Orden Estricto
     document.getElementById('btnRutaOrdenEstricto').onclick = () => window.enviarRutaGoogleOrdenEstricto();
-    
     document.getElementById('btnGoogleMaps').onclick = () => window.navGoogle(true);
     document.getElementById('btnWaze').onclick = () => {
         if(lastRouteCoords.length < 2) return alert("Crea ruta");

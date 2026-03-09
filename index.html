@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v3.6 - Multi-Usuario</title>
+<title>Rutas Comerciales PRO v3.9 - Coordenada Única</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -30,7 +30,6 @@ body {
     overflow: hidden;
 }
 
-/* AVISO DE GIRO DE PANTALLA */
 #rotation-notice {
     display: none;
     position: fixed;
@@ -47,11 +46,7 @@ body {
     box-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
 
-#map { 
-    flex:1; 
-    height: 100%; 
-    z-index: 1; 
-}
+#map { flex:1; height: 100%; z-index: 1; }
 
 #panel { 
     width:400px; 
@@ -68,7 +63,6 @@ body {
 @media (max-width: 768px) { 
     body { flex-direction: row !important; } 
     #panel { width: 85%; max-width: 320px; padding: 15px; } 
-    
     @media (orientation: portrait) {
         #rotation-notice { display: block; }
         body { padding-top: 45px; }
@@ -150,8 +144,8 @@ input, select, textarea {
     margin-top: 10px;
 }
 
-.coord-row { display: flex; gap: 8px; margin-top: 5px; }
-.coord-row input { margin: 0; background: white; border: 1px solid #fdba74; font-family: monospace; }
+.coord-single-row { margin-top: 5px; }
+.coord-single-row input { margin: 0; background: white; border: 1px solid #fdba74; font-family: monospace; text-align: center; }
 
 .client { padding:12px; border: 1px solid var(--border); background: #ffffff; margin-bottom: 10px; border-radius: 12px; }
 .edit-mode { border: 2px solid var(--primary); background: #f0f9ff; }
@@ -187,17 +181,16 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: s
     <div class="card">
       <h3>👥 Registro de Cliente</h3>
       <input id="name" placeholder="Nombre cliente" />
-      <input id="address" placeholder="Dirección para buscar..." />
+      <input id="address" placeholder="Dirección opcional..." />
       
       <button id="btnOpenGoogle" class="btn-google-helper">
-        <i class="fab fa-google"></i> 1. Buscar coordenadas en Google
+        <i class="fab fa-google"></i> 1. Buscar en Google Maps
       </button>
 
       <div class="coord-container">
-          <small style="color: #9a3412; font-weight: bold;">2. Pega aquí las coordenadas de Google:</small>
-          <div class="coord-row">
-              <input id="manualLat" placeholder="Latitud" />
-              <input id="manualLng" placeholder="Longitud" />
+          <small style="color: #9a3412; font-weight: bold;">2. Pega aquí las coordenadas (Lat, Lng):</small>
+          <div class="coord-single-row">
+              <input id="fullCoords" placeholder="Ej: 40.41, -3.70" />
           </div>
       </div>
 
@@ -342,29 +335,30 @@ function renderClientes(){
 }
 
 window.addClient = async function() { 
-    const inName=document.getElementById('name'), inAddr=document.getElementById('address'), inLat=document.getElementById('manualLat'), inLng=document.getElementById('manualLng'), inNotes=document.getElementById('notes');
-    const name=inName.value.trim(), address=inAddr.value.trim(), mLat=inLat.value.trim(), mLng=inLng.value.trim();
+    const inName=document.getElementById('name'), inAddr=document.getElementById('address'), inFullCoords=document.getElementById('fullCoords'), inNotes=document.getElementById('notes');
+    const name=inName.value.trim(), address=inAddr.value.trim(), fullCoords=inFullCoords.value.trim();
     if(!name) return alert("El nombre es obligatorio");
     let finalLat, finalLng;
-    if(mLat && mLng) { 
-        finalLat=parseFloat(mLat.replace(',', '.')); 
-        finalLng=parseFloat(mLng.replace(',', '.')); 
-    } 
-    else if(address) { 
+
+    if(fullCoords.includes(',')) {
+        const parts = fullCoords.split(',');
+        finalLat = parseFloat(parts[0].trim().replace(',', '.'));
+        finalLng = parseFloat(parts[1].trim().replace(',', '.'));
+    } else if(address) {
         const co=await geocode(address); 
-        if(!co) {
-            alert("⚠️ No se encontró la dirección. Pulsa el botón azul para buscarla en Google y copiar las coordenadas.");
-            return;
-        }
+        if(!co) return alert("Dirección no encontrada");
         finalLat=co.lat; finalLng=co.lng; 
     } else {
         try {
             const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
             finalLat = pos.coords.latitude; finalLng = pos.coords.longitude;
-        } catch(e) { return alert("GPS necesario"); }
+        } catch(e) { return alert("Pega coordenadas o activa GPS"); }
     }
+
+    if(isNaN(finalLat) || isNaN(finalLng)) return alert("Coordenadas no válidas");
+
     await addDoc(collection(db, "clientes"), { name, address, lat: finalLat, lng: finalLng, notes: inNotes.value, userId: auth.currentUser.uid }); 
-    inName.value=""; inAddr.value=""; inLat.value=""; inLng.value=""; inNotes.value=""; cargarClientes();
+    inName.value=""; inAddr.value=""; inFullCoords.value=""; inNotes.value=""; cargarClientes();
 }
 
 window.editClient = (id) => { editingClientId = id; renderClientes(); };
@@ -475,11 +469,10 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('btnClearRoute').onclick = () => { if(routeLine)map.removeLayer(routeLine); redMarkers.forEach(m=>map.removeLayer(m)); };
     document.getElementById('startOption').onchange = (e) => document.getElementById('startAddress').style.display = e.target.value === "manual" ? "block" : "none";
     
-    // Botón Ayudante de Google
     document.getElementById('btnOpenGoogle').onclick = () => {
         const addr = document.getElementById('address').value;
-        if(!addr) return alert("Escribe primero una dirección o nombre de negocio");
-        window.open(`https://www.google.com/maps/search/${encodeURIComponent(addr)}`, '_blank');
+        const url = addr ? `https://www.google.com/maps/search/${encodeURIComponent(addr)}` : `https://www.google.com/maps`;
+        window.open(url, '_blank');
     };
 });
 </script>

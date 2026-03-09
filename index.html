@@ -29,6 +29,23 @@ body {
     overflow: hidden;
 }
 
+/* AVISO DE GIRO DE PANTALLA */
+#rotation-notice {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #ff9800;
+    color: white;
+    text-align: center;
+    padding: 10px;
+    z-index: 9999;
+    font-weight: bold;
+    font-size: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
 #map { 
     flex:1; 
     height: 100%; 
@@ -45,21 +62,17 @@ body {
     box-shadow: -4px 0 15px rgba(0,0,0,0.08); 
     z-index: 10; 
     scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
 }
 
-/* Ajuste para mantener vista PC en Móvil */
+/* Forzar vista PC en móvil y mostrar aviso */
 @media (max-width: 768px) { 
-    body { 
-        flex-direction: row !important; /* Mantiene el mapa al lado del panel */
-    } 
-    #panel { 
-        width: 85%; /* En móviles pequeños el panel ocupa más espacio pero sigue al lado */
-        max-width: 320px;
-        padding: 15px;
-    } 
-    #map {
-        flex: 1;
+    body { flex-direction: row !important; } 
+    #panel { width: 80%; max-width: 300px; padding: 15px; } 
+    
+    /* Mostrar aviso solo si está en vertical */
+    @media (orientation: portrait) {
+        #rotation-notice { display: block; }
+        body { padding-top: 40px; } /* Espacio para el aviso */
     }
 }
 
@@ -107,117 +120,37 @@ button {
     align-items: center; 
     gap: 8px; 
     text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
-button:hover { 
-    background: var(--primary-dark); 
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
-}
-
-button:active {
-    transform: translateY(0);
-}
+button:hover { background: var(--primary-dark); transform: translateY(-1px); }
 
 .btn-register { background: var(--success); }
-.btn-register:hover { background: #059669; }
-
-#btnRutaOrdenEstricto { 
-    background-color: #f59e0b; 
-    color: white; 
-}
-#btnRutaOrdenEstricto:hover { background-color: #d97706; }
-
-.smallBtn { 
-    padding:6px 12px; 
-    font-size:11px; 
-    margin: 4px 2px; 
-    width: auto; 
-    display: inline-flex; 
-    text-transform: none;
-}
-
+#btnRutaOrdenEstricto { background-color: #f59e0b; color: white; }
+.smallBtn { padding:6px 12px; font-size:11px; margin: 4px 2px; width: auto; display: inline-flex; text-transform: none;}
 .deleteBtn { background:#ef4444; }
-.deleteBtn:hover { background:#dc2626; }
-
 .saveBtn { background: #10b981; }
 
 input, select, textarea { 
-    width:100%; 
-    margin:8px 0; 
-    padding:11px; 
-    border-radius:10px; 
-    border: 1px solid var(--border); 
-    box-sizing: border-box; 
-    font-size: 14px; 
+    width:100%; margin:8px 0; padding:11px; border-radius:10px; 
+    border: 1px solid var(--border); box-sizing: border-box; font-size: 14px; 
     background: #f8fafc;
-    transition: border 0.2s;
-}
-
-input:focus, select:focus, textarea:focus {
-    outline: none;
-    border-color: var(--primary);
-    background: white;
 }
 
 .coord-row { display: flex; gap: 8px; }
-
-.client { 
-    padding:12px; 
-    border: 1px solid var(--border); 
-    background: #ffffff; 
-    margin-bottom: 10px; 
-    border-radius: 12px; 
-    transition: all 0.2s;
-}
-.client:hover {
-    border-color: var(--primary);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.edit-mode { 
-    border: 2px solid var(--primary); 
-    background: #f0f9ff; 
-}
-
-.stats-badge { 
-    background: #0ea5e9; 
-    color: white; 
-    padding: 2px 10px; 
-    border-radius: 20px; 
-    font-size: 0.75rem; 
-    margin-left: auto;
-}
-
-input[type="checkbox"] { 
-    width: auto; 
-    accent-color: var(--primary);
-    transform: scale(1.2); 
-    margin-right: 12px; 
-    cursor: pointer; 
-}
-
-.routeItem { 
-    display:flex; 
-    justify-content:space-between; 
-    align-items:center; 
-    margin-bottom:8px; 
-    font-size:12px; 
-    background:#f1f5f9; 
-    padding:8px 12px; 
-    border-radius:10px; 
-    border:1px solid #e2e8f0; 
-}
-
+.client { padding:12px; border: 1px solid var(--border); background: #ffffff; margin-bottom: 10px; border-radius: 12px; }
+.edit-mode { border: 2px solid var(--primary); background: #f0f9ff; }
+.stats-badge { background: #0ea5e9; color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; margin-left: auto;}
+input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: scale(1.2); margin-right: 12px; cursor: pointer; }
+.routeItem { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px; background:#f1f5f9; padding:8px 12px; border-radius:10px; border:1px solid #e2e8f0; }
 .hidden { display: none; }
-
-/* Scrollbar personalizado para el panel */
-#panel::-webkit-scrollbar { width: 6px; }
-#panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 </style>
 </head>
 <body>
+
+<div id="rotation-notice">
+    <i class="fas fa-mobile-alt" style="transform: rotate(90deg);"></i> 
+    Gira la pantalla para una mejor experiencia
+</div>
 
 <div id="map"></div>
 
@@ -232,7 +165,7 @@ input[type="checkbox"] {
 
   <div id="mainSection" class="hidden">
     <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid var(--border);">
-        <span id="userDisplay" style="font-size: 11px; color: #64748b; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;"></span>
+        <span id="userDisplay" style="font-size: 11px; color: #64748b; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px;"></span>
         <button id="btnLogout" class="deleteBtn smallBtn">Salir</button>
     </div>
 
@@ -244,15 +177,13 @@ input[type="checkbox"] {
           <input id="manualLat" placeholder="Latitud" />
           <input id="manualLng" placeholder="Longitud" />
       </div>
-      <textarea id="notes" placeholder="Notas (Hotel, Restaurante...)" rows="2"></textarea>
+      <textarea id="notes" placeholder="Notas..." rows="2"></textarea>
       <button id="btnAddClient">➕ Guardar cliente</button>
     </div>
 
     <div class="card">
       <h3>🧭 Planificador de Ruta</h3>
-      <label style="font-size: 12px; font-weight: 600; color: #64748b;">Fecha:</label>
       <input type="date" id="routeDate" />
-      <label style="font-size: 12px; font-weight: 600; color: #64748b;">Salida:</label>
       <select id="startOption">
         <option value="gps">📍 Mi ubicación actual</option>
         <option value="manual">✏️ Dirección manual</option>
@@ -264,10 +195,10 @@ input[type="checkbox"] {
 
     <div class="card">
       <h3>🚗 Navegación</h3>
-      <button id="btnRutaOrdenEstricto"><i class="fas fa-route"></i> Google (Orden de Lista)</button>
-      <button id="btnGoogleMaps" style="background: #22c55e;">🌐 Google (Optimizado)</button>
-      <button id="btnWaze" style="background: #3b82f6;">🛣️ Abrir Waze</button>
-      <button id="btnClearRoute" style="background: #94a3b8;">🧹 Limpiar mapa</button>
+      <button id="btnRutaOrdenEstricto"><i class="fas fa-route"></i> Google (Orden)</button>
+      <button id="btnGoogleMaps" style="background: #22c55e;">🌐 Google (Optim.)</button>
+      <button id="btnWaze" style="background: #3b82f6;">🛣️ Waze</button>
+      <button id="btnClearRoute" style="background: #94a3b8;">🧹 Limpiar</button>
     </div>
 
     <h3 style="justify-content: space-between;">📊 Clientes <span id="stats" class="stats-badge">0</span></h3>
@@ -372,24 +303,14 @@ function renderClientes(){
         if(c.lat && c.lng){ 
             const defaultIcon = getClientIcon(c);
             let m = L.marker([c.lat,c.lng], {icon: defaultIcon}).addTo(map).bindPopup(c.name);
-            
             m.on('click', () => { 
                 const cb = document.getElementById('c'+i); 
-                if(cb){ 
-                    cb.checked = !cb.checked; 
-                    m.setIcon(cb.checked ? iconPin : defaultIcon); 
-                } 
+                if(cb){ cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : defaultIcon); } 
             });
-
             setTimeout(() => {
                 const cb = document.getElementById('c'+i);
-                if(cb) {
-                    cb.addEventListener('change', (e) => {
-                        m.setIcon(e.target.checked ? iconPin : defaultIcon);
-                    });
-                }
+                if(cb) cb.addEventListener('change', (e) => m.setIcon(e.target.checked ? iconPin : defaultIcon));
             }, 0);
-
             markers.push(m);
         }
     }); 

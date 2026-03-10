@@ -30,7 +30,6 @@ body {
     overflow: hidden;
 }
 
-/* AVISO DE GIRO DE PANTALLA */
 #rotation-notice {
     display: none;
     position: fixed;
@@ -47,11 +46,7 @@ body {
     box-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
 
-#map { 
-    flex:1; 
-    height: 100%; 
-    z-index: 1; 
-}
+#map { flex:1; height: 100%; z-index: 1; }
 
 #panel { 
     width:400px; 
@@ -62,13 +57,11 @@ body {
     box-sizing: border-box; 
     box-shadow: -4px 0 15px rgba(0,0,0,0.08); 
     z-index: 10; 
-    scrollbar-width: thin;
 }
 
 @media (max-width: 768px) { 
     body { flex-direction: row !important; } 
     #panel { width: 85%; max-width: 320px; padding: 15px; } 
-    
     @media (orientation: portrait) {
         #rotation-notice { display: block; }
         body { padding-top: 45px; }
@@ -123,13 +116,7 @@ button {
 
 button:hover { background: var(--primary-dark); transform: translateY(-1px); }
 
-.btn-google-helper { 
-    background: #4285F4; 
-    font-size: 11px; 
-    padding: 8px; 
-    margin-top: 4px;
-}
-
+.btn-google-helper { background: #4285F4; font-size: 11px; padding: 8px; margin-top: 4px; }
 .btn-register { background: var(--success); }
 #btnRutaOrdenEstricto { background-color: var(--warning); color: white; }
 .smallBtn { padding:6px 12px; font-size:11px; margin: 4px 2px; width: auto; display: inline-flex; }
@@ -190,11 +177,11 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: s
       <input id="address" placeholder="Dirección para buscar..." />
       
       <button id="btnOpenGoogle" class="btn-google-helper">
-        <i class="fab fa-google"></i> 1. Buscar coordenadas en Google
+        <i class="fab fa-google"></i> 1. Buscar en Google Maps
       </button>
 
       <div class="coord-container">
-          <small style="color: #9a3412; font-weight: bold;">2. Pega aquí las coordenadas de Google:</small>
+          <small style="color: #9a3412; font-weight: bold;">2. Pega aquí las coordenadas:</small>
           <div class="coord-row">
               <input id="manualLat" placeholder="Latitud" />
               <input id="manualLng" placeholder="Longitud" />
@@ -219,8 +206,8 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: s
 
     <div class="card">
       <h3>🚗 Navegación</h3>
-      <button id="btnRutaOrdenEstricto"><i class="fas fa-route"></i> Google (Orden)</button>
-      <button id="btnGoogleMaps" style="background: #22c55e;">🌐 Google (Optim.)</button>
+      <button id="btnRutaOrdenEstricto"><i class="fas fa-route"></i> Google (Orden de Lista)</button>
+      <button id="btnGoogleMaps" style="background: #22c55e;">🌐 Google (Optimizado)</button>
       <button id="btnWaze" style="background: #3b82f6;">🛣️ Waze</button>
       <button id="btnClearRoute" style="background: #94a3b8;">🧹 Limpiar</button>
     </div>
@@ -253,7 +240,7 @@ let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRo
 let editingClientId = null;
 let currentStartOption = "gps";
 
-// ICONOS PERSONALIZADOS
+// ICONOS
 const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
 const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[38,38], iconAnchor:[19,38] });
 const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[38,38], iconAnchor:[19,38] });
@@ -321,10 +308,9 @@ function renderClientes(){
             div.classList.add('edit-mode');
             div.innerHTML = `<input id="edit_name" value="${c.name||''}" /><input id="edit_address" value="${c.address||''}" /><textarea id="edit_notes">${c.notes||''}</textarea><div style="display:flex; gap:8px"><button class="smallBtn saveBtn" onclick="saveEditClient('${c.id}')">💾</button><button class="smallBtn" onclick="cancelEdit()">❌</button></div>`;
         } else {
-            div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div style="flex:1"><b>${c.name}</b><br><small style="color: #64748b;">${c.address || 'Coordenadas Manuales'}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick='editClient("${c.id}")'>✏️ Editar</button><button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️ Borrar</button></div>`;
+            div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div style="flex:1"><b>${c.name}</b><br><small style="color: #64748b;">${c.address || 'Coordenadas GPS'}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick='editClient("${c.id}")'>✏️ Editar</button><button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️ Borrar</button></div>`;
         }
         container.appendChild(div);
-
         if(c.lat && c.lng){ 
             const defaultIcon = getClientIcon(c);
             let m = L.marker([c.lat,c.lng], {icon: defaultIcon}).addTo(map).bindPopup(c.name);
@@ -332,10 +318,6 @@ function renderClientes(){
                 const cb = document.getElementById('c'+i); 
                 if(cb){ cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : defaultIcon); } 
             });
-            setTimeout(() => {
-                const cb = document.getElementById('c'+i);
-                if(cb) cb.addEventListener('change', (e) => m.setIcon(e.target.checked ? iconPin : defaultIcon));
-            }, 0);
             markers.push(m);
         }
     }); 
@@ -345,44 +327,27 @@ function renderClientes(){
 window.addClient = async function() { 
     const inName=document.getElementById('name'), inAddr=document.getElementById('address'), inLat=document.getElementById('manualLat'), inLng=document.getElementById('manualLng'), inNotes=document.getElementById('notes');
     const name=inName.value.trim(), address=inAddr.value.trim(), mLat=inLat.value.trim(), mLng=inLng.value.trim();
-    
-    if(!name) return alert("El nombre es obligatorio");
-    
+    if(!name) return alert("Nombre obligatorio");
     let finalLat, finalLng;
-    if(mLat && mLng) { 
-        finalLat=parseFloat(mLat.replace(',', '.')); 
-        finalLng=parseFloat(mLng.replace(',', '.')); 
-    } 
+    if(mLat && mLng) { finalLat=parseFloat(mLat.replace(',', '.')); finalLng=parseFloat(mLng.replace(',', '.')); } 
     else if(address) { 
         const co=await geocode(address); 
-        if(!co) {
-            alert("⚠️ No se encontró la dirección. Pulsa el botón azul para buscarla en Google y copiar las coordenadas.");
-            return;
-        }
+        if(!co) return alert("Dirección no encontrada. Usa el ayudante de Google.");
         finalLat=co.lat; finalLng=co.lng; 
     } else {
-        try {
-            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
-            finalLat = pos.coords.latitude; finalLng = pos.coords.longitude;
-        } catch(e) { return alert("GPS necesario"); }
+        try { const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej)); finalLat = pos.coords.latitude; finalLng = pos.coords.longitude; } catch(e) { return alert("GPS necesario"); }
     }
-
-    try {
-        await addDoc(collection(db, "clientes"), { name, address, lat: finalLat, lng: finalLng, notes: inNotes.value, userId: auth.currentUser.uid }); 
-        inName.value=""; inAddr.value=""; inLat.value=""; inLng.value=""; inNotes.value=""; 
-        cargarClientes();
-    } catch(e) { alert("Error al guardar: " + e.message); }
+    await addDoc(collection(db, "clientes"), { name, address, lat: finalLat, lng: finalLng, notes: inNotes.value, userId: auth.currentUser.uid }); 
+    inName.value=""; inAddr.value=""; inLat.value=""; inLng.value=""; inNotes.value=""; cargarClientes();
 }
 
 window.editClient = (id) => { editingClientId = id; renderClientes(); };
 window.cancelEdit = () => { editingClientId = null; renderClientes(); };
 window.saveEditClient = async (id) => {
     const n = document.getElementById('edit_name').value.trim(), a = document.getElementById('edit_address').value.trim(), nt = document.getElementById('edit_notes').value.trim();
-    const co = await geocode(a);
     const data = { name: n, address: a, notes: nt };
-    if(co) { data.lat = co.lat; data.lng = co.lng; }
-    await updateDoc(doc(db, "clientes", id), data);
-    editingClientId = null; cargarClientes();
+    const co = await geocode(a); if(co) { data.lat = co.lat; data.lng = co.lng; }
+    await updateDoc(doc(db, "clientes", id), data); editingClientId = null; cargarClientes();
 };
 
 window.deleteClient = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"clientes",id)); cargarClientes(); } };
@@ -404,6 +369,7 @@ window.createRoute = async function(isLoading = false){
         const res = await fetch(`https://router.project-osrm.org/trip/v1/driving/${strCoords}?source=first&destination=last&roundtrip=false&overview=full&geometries=geojson`);
         const data = await res.json();
         if(data.trips) {
+            // Guardamos coordenadas y clientes EN ORDEN de la ruta azul
             lastRouteCoords = data.waypoints.sort((a, b) => a.waypoint_index - b.waypoint_index).map(w => [w.location[1], w.location[0]]);
             lastRouteClients = lastRouteCoords.slice(1).map(coord => sel.find(c => c.lat.toFixed(4) == coord[0].toFixed(4) && c.lng.toFixed(4) == coord[1].toFixed(4))).filter(c => c);
 
@@ -423,39 +389,46 @@ window.loadRoute = async function(id){
     const d=rd.data(); 
     clients.forEach((c, i) => { 
         const cb = document.getElementById('c'+i); 
-        if(cb) { 
-            cb.checked = d.clients.includes(c.id); 
-            if(markers[i]) markers[i].setIcon(cb.checked ? iconPin : getClientIcon(c)); 
-        } 
+        if(cb) { cb.checked = d.clients.includes(c.id); if(markers[i]) markers[i].setIcon(cb.checked ? iconPin : getClientIcon(c)); } 
     });
     window.createRoute(true);
 }
 
+// CORRECCIÓN: Función que envía TODOS los clientes en el ORDEN de la lista
 window.enviarRutaGoogleOrdenEstricto = function() {
-    if (lastRouteCoords.length < 2) return alert("Crea una ruta azul primero");
+    if (lastRouteClients.length === 0) return alert("Primero crea la ruta azul");
+    
     let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
-    let lastClient = lastRouteClients[lastRouteClients.length - 1];
-    let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastRouteCoords[lastRouteCoords.length-1][0]},${lastRouteCoords[lastRouteCoords.length-1][1]}`;
-    let waypoints = lastRouteClients.slice(0, -1).map(c => c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`).join('|');
-    window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, '_blank');
+    
+    // El último de la lista es el destino final
+    let lastC = lastRouteClients[lastRouteClients.length - 1];
+    let destination = lastC.address ? encodeURIComponent(lastC.address) : `${lastC.lat},${lastC.lng}`;
+    
+    // Todos los anteriores son paradas intermedias (waypoints)
+    let waypoints = lastRouteClients.slice(0, -1).map(c => {
+        return c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`;
+    }).join('|');
+    
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
+    window.open(url, '_blank');
 }
 
-window.navGoogle = (opt) => {
-    if(lastRouteCoords.length < 2) return alert("Crea ruta primero");
-    let waypoints = lastRouteClients.map(c => `${c.lat},${c.lng}`).join('|');
-    let dest = `${lastRouteCoords[lastRouteCoords.length-1][0]},${lastRouteCoords[lastRouteCoords.length-1][1]}`;
-    let url = `https://www.google.com/maps/dir/?api=1&destination=${dest}&waypoints=${waypoints}&travelmode=driving`;
-    if(!opt) url += "&dir_action=navigate";
-    window.open(url, '_blank');
+// Función para Google Optimizado (deja que Google decida el orden si quiere)
+window.navGoogleOptimizado = () => {
+    if(lastRouteClients.length === 0) return alert("Crea ruta primero");
+    let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
+    let lastC = lastRouteClients[lastRouteClients.length - 1];
+    let destination = lastC.address ? encodeURIComponent(lastC.address) : `${lastC.lat},${lastC.lng}`;
+    let waypoints = lastRouteClients.slice(0, -1).map(c => c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`).join('|');
+    
+    window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, '_blank');
 };
 
 document.getElementById('btnLogin').onclick = () => {
     signInWithEmailAndPassword(auth, document.getElementById('email').value.trim(), document.getElementById('password').value).catch(e => alert(e.message));
 };
 document.getElementById('btnRegister').onclick = () => {
-    createUserWithEmailAndPassword(auth, document.getElementById('email').value.trim(), document.getElementById('password').value)
-    .then(() => alert("✅ Cuenta creada correctamente"))
-    .catch(e => alert("Error: La clave debe tener 6 caracteres"));
+    createUserWithEmailAndPassword(auth, document.getElementById('email').value.trim(), document.getElementById('password').value).then(() => alert("✅ Cuenta creada")).catch(e => alert("Error: Mínimo 6 caracteres"));
 };
 
 let userMarker = null;
@@ -472,8 +445,8 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('btnLogout').onclick = () => signOut(auth);
     document.getElementById('btnAddClient').onclick = window.addClient;
     document.getElementById('btnCreateRoute').onclick = () => window.createRoute(false);
-    document.getElementById('btnRutaOrdenEstricto').onclick = () => window.enviarRutaGoogleOrdenEstricto();
-    document.getElementById('btnGoogleMaps').onclick = () => window.navGoogle(true);
+    document.getElementById('btnRutaOrdenEstricto').onclick = window.enviarRutaGoogleOrdenEstricto;
+    document.getElementById('btnGoogleMaps').onclick = window.navGoogleOptimizado;
     document.getElementById('btnWaze').onclick = () => {
         if(lastRouteCoords.length < 2) return alert("Crea ruta");
         const dest = lastRouteCoords[lastRouteCoords.length-1];
@@ -481,11 +454,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     };
     document.getElementById('btnClearRoute').onclick = () => { if(routeLine)map.removeLayer(routeLine); redMarkers.forEach(m=>map.removeLayer(m)); };
     document.getElementById('startOption').onchange = (e) => document.getElementById('startAddress').style.display = e.target.value === "manual" ? "block" : "none";
-    
-    // Botón Ayudante de Google
     document.getElementById('btnOpenGoogle').onclick = () => {
         const addr = document.getElementById('address').value;
-        if(!addr) return alert("Escribe primero una dirección o nombre de negocio");
+        if(!addr) return alert("Escribe primero una dirección");
         window.open(`https://www.google.com/maps/search/${encodeURIComponent(addr)}`, '_blank');
     };
 });

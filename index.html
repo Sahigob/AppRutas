@@ -46,38 +46,13 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: s
 .hidden { display: none; }
 .marker-label { background: white; border: 2px solid red; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: red; }
 
-/* --- CSS AÑADIDO PARA RECUPERAR ICONOS POI (RESTAURANTES / HOTELES) --- */
-
-.leaflet-pane img,
-.leaflet-marker-pane img,
-.leaflet-overlay-pane img {
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-.leaflet-pane svg,
-.leaflet-overlay-pane svg {
-    visibility: visible !important;
-}
-
-.leaflet-control-attribution {
-    font-size:10px;
-}
-
-.leaflet-tile-pane img {
-    image-rendering: auto;
-}
-
-/* asegura que nada del layout oculte POI */
-#map img {
-    max-width: none !important;
-}
-
-/* evita que panel tape iconos del mapa */
-#panel {
-    position: relative;
-    z-index: 1000;
-}
+/* --- CSS AÑADIDO PARA RECUPERAR ICONOS POI --- */
+.leaflet-pane img, .leaflet-marker-pane img, .leaflet-overlay-pane img { visibility: visible !important; opacity: 1 !important; }
+.leaflet-pane svg, .leaflet-overlay-pane svg { visibility: visible !important; }
+.leaflet-control-attribution { font-size:10px; }
+.leaflet-tile-pane img { image-rendering: auto; }
+#map img { max-width: none !important; }
+#panel { position: relative; z-index: 1000; }
 </style>
 </head>
 <body>
@@ -105,7 +80,7 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: s
           <small style="color: #9a3412; font-weight: bold;">Pega coordenadas (Lat, Lng):</small>
           <div class="coord-single-row"><input id="fullCoords" placeholder="Ej: 40.41, -3.70" /></div>
       </div>
-      <textarea id="notes" placeholder="Notas..." rows="2" style="margin-top:10px"></textarea>
+      <textarea id="notes" placeholder="Notas (Hotel, Restaurante...)" rows="2" style="margin-top:10px"></textarea>
       <button id="btnAddClient">➕ Guardar cliente</button>
     </div>
     <div class="card">
@@ -141,9 +116,20 @@ const auth = getAuth(app);
 
 let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRouteClients=[], editingClientId = null, currentStartOption = "gps";
 
+// ICONOS PERSONALIZADOS
 const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
+const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[38,38], iconAnchor:[19,38] });
+const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[38,38], iconAnchor:[19,38] });
 const iconPin = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[32,32], iconAnchor:[16,32] });
 const iconUser = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[40,40], iconAnchor:[20,40] });
+
+// Lógica de detección de tipo de POI
+function getClientIcon(cliente){
+  const text=(cliente.notes||"").toLowerCase();
+  if(text.includes("comida")||text.includes("bar")||text.includes("restaurante")) return iconFood;
+  if(text.includes("hotel")||text.includes("hostal")||text.includes("dormir")) return iconHotel;
+  return iconNormal;
+}
 
 let map = L.map('map').setView([40.4168,-3.7038],12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -187,10 +173,11 @@ function renderClientes(){
         }
         container.appendChild(div);
         if(c.lat && c.lng){ 
-            let m = L.marker([c.lat,c.lng], {icon: iconNormal}).addTo(map).bindPopup(c.name);
+            const defaultIcon = getClientIcon(c);
+            let m = L.marker([c.lat,c.lng], {icon: defaultIcon}).addTo(map).bindPopup(c.name);
             m.on('click', () => { 
                 const cb = document.getElementById('c'+i); 
-                if(cb){ cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : iconNormal); } 
+                if(cb){ cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : defaultIcon); } 
             });
             markers[i] = m;
         }
@@ -201,7 +188,9 @@ function renderClientes(){
 window.syncMarker = function(i) {
     if(markers[i]) {
         const cb = document.getElementById('c'+i);
-        markers[i].setIcon(cb.checked ? iconPin : iconNormal);
+        const client = clients[i];
+        const defaultIcon = getClientIcon(client);
+        markers[i].setIcon(cb.checked ? iconPin : defaultIcon);
     }
 }
 
@@ -268,38 +257,25 @@ window.createRoute = async function(isLoading = false){
     } catch(e) { console.error(e); }
 }
 
-// MODIFICADO: Prioriza dirección de texto para precisión de número de portal
 window.enviarRutaGoogleOrdenEstricto = function() {
     if (lastRouteCoords.length < 2) return alert("Crea una ruta azul primero");
-
     let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
-    
     let lastClient = lastRouteClients[lastRouteClients.length - 1];
     let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastRouteCoords[lastRouteCoords.length - 1][0]},${lastRouteCoords[lastRouteCoords.length - 1][1]}`;
-    
     let waypoints = "";
     if (lastRouteClients.length > 1) {
-        waypoints = lastRouteClients.slice(0, -1).map(c => {
-            return c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`;
-        }).join('|');
+        waypoints = lastRouteClients.slice(0, -1).map(c => c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`).join('|');
     }
-
     const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
     window.open(url, '_blank');
 }
 
 window.openInGoogleMaps = function() { 
     if (lastRouteCoords.length < 2) return alert("Crea o carga una ruta"); 
-    
     let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
-    
     let lastClient = lastRouteClients[lastRouteClients.length - 1];
     let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastRouteCoords[lastRouteCoords.length - 1][0]},${lastRouteCoords[lastRouteCoords.length - 1][1]}`;
-    
-    let waypoints = lastRouteClients.slice(0, -1).map(c => {
-        return c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`;
-    }).join('|');
-
+    let waypoints = lastRouteClients.slice(0, -1).map(c => c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`).join('|');
     const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
     window.open(url, '_blank'); 
 }
@@ -323,7 +299,7 @@ window.loadRoute = async (id) => {
         clients.forEach((c, i) => {
             const cb = document.getElementById('c'+i);
             if(cb) cb.checked = false;
-            if(markers[i]) markers[i].setIcon(iconNormal);
+            if(markers[i]) markers[i].setIcon(getClientIcon(c));
         });
         clients.forEach((c, i) => {
             if(rutaData.clients.includes(c.id)) {
@@ -364,7 +340,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('startOption').onchange = (e) => document.getElementById('startAddress').style.display = e.target.value === "manual" ? "block" : "none";
     document.getElementById('btnOpenGoogle').onclick = () => {
         const addr = document.getElementById('address').value;
-        const url = addr ? `https://www.google.com/maps/search/${encodeURIComponent(addr)}` : `https://www.google.com/maps`;
+        const url = addr ? `https://www.google.com/maps/dir/?api=1&destination=$0{encodeURIComponent(addr)}` : `www.google.com/maps/dir/?api=1`;
         window.open(url, '_blank');
     };
 });

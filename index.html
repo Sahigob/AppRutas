@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v4.7 - Address Priority Fix</title>
+<title>Rutas Comerciales PRO v4.8 - Icons & Address Fix</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -108,9 +108,19 @@ const auth = getAuth(app);
 
 let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRouteClients=[], editingClientId = null, currentStartOption = "gps";
 
+// ICONOS RESTAURADOS
 const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
 const iconPin = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[32,32], iconAnchor:[16,32] });
 const iconUser = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[40,40], iconAnchor:[20,40] });
+const iconHotel = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/2983/2983802.png", iconSize:[32,32], iconAnchor:[16,32] });
+const iconRest = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[32,32], iconAnchor:[16,32] });
+
+function getClientIcon(cliente){
+    const text = (cliente.notes || "").toLowerCase();
+    if(text.includes("hotel")) return iconHotel;
+    if(text.includes("restaurante") || text.includes("comer")) return iconRest;
+    return iconNormal;
+}
 
 let map = L.map('map').setView([40.4168,-3.7038],12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -154,10 +164,10 @@ function renderClientes(){
         }
         container.appendChild(div);
         if(c.lat && c.lng){ 
-            let m = L.marker([c.lat,c.lng], {icon: iconNormal}).addTo(map).bindPopup(c.name);
+            let m = L.marker([c.lat,c.lng], {icon: getClientIcon(c)}).addTo(map).bindPopup(c.name);
             m.on('click', () => { 
                 const cb = document.getElementById('c'+i); 
-                if(cb){ cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : iconNormal); } 
+                if(cb){ cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : getClientIcon(c)); } 
             });
             markers[i] = m;
         }
@@ -168,7 +178,7 @@ function renderClientes(){
 window.syncMarker = function(i) {
     if(markers[i]) {
         const cb = document.getElementById('c'+i);
-        markers[i].setIcon(cb.checked ? iconPin : iconNormal);
+        markers[i].setIcon(cb.checked ? iconPin : getClientIcon(clients[i]));
     }
 }
 
@@ -235,44 +245,30 @@ window.createRoute = async function(isLoading = false){
     } catch(e) { console.error(e); }
 }
 
-// MODIFICADO: Prioriza dirección de texto para precisión de número de portal
+// FUNCIONES DE GOOGLE MAPS INTEGRADAS SEGUN TU PETICIÓN
 window.enviarRutaGoogleOrdenEstricto = function() {
     if (lastRouteCoords.length < 2) return alert("Crea una ruta azul primero");
-
-    // Buscamos los objetos cliente correspondientes a los puntos de la ruta
-    // El origen (índice 0)
     let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
-    
-    // El destino final (último punto)
     let lastClient = lastRouteClients[lastRouteClients.length - 1];
     let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastRouteCoords[lastRouteCoords.length - 1][0]},${lastRouteCoords[lastRouteCoords.length - 1][1]}`;
-    
-    // Puntos intermedios (waypoints)
     let waypoints = "";
     if (lastRouteClients.length > 1) {
-        // Mapeamos los clientes intermedios a su dirección o coord
         waypoints = lastRouteClients.slice(0, -1).map(c => {
             return c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`;
         }).join('|');
     }
-
     const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
     window.open(url, '_blank');
 }
 
-// MODIFICADO: También para el botón "Optimizado"
 window.openInGoogleMaps = function() { 
     if (lastRouteCoords.length < 2) return alert("Crea o carga una ruta"); 
-    
     let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
-    
     let lastClient = lastRouteClients[lastRouteClients.length - 1];
     let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastRouteCoords[lastRouteCoords.length - 1][0]},${lastRouteCoords[lastRouteCoords.length - 1][1]}`;
-    
     let waypoints = lastRouteClients.slice(0, -1).map(c => {
         return c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`;
     }).join('|');
-
     const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
     window.open(url, '_blank'); 
 }
@@ -296,7 +292,7 @@ window.loadRoute = async (id) => {
         clients.forEach((c, i) => {
             const cb = document.getElementById('c'+i);
             if(cb) cb.checked = false;
-            if(markers[i]) markers[i].setIcon(iconNormal);
+            if(markers[i]) markers[i].setIcon(getClientIcon(c));
         });
         clients.forEach((c, i) => {
             if(rutaData.clients.includes(c.id)) {

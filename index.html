@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v4.1 - Optimización Real</title>
+<title>Rutas Comerciales PRO v4.2 - Control Total</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -44,6 +44,7 @@ input, select, textarea { width:100%; margin:8px 0; padding:11px; border-radius:
 input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: scale(1.2); margin-right: 12px; cursor: pointer; }
 .routeItem { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px; background:#f1f5f9; padding:8px 12px; border-radius:10px; border:1px solid #e2e8f0; }
 .hidden { display: none; }
+.marker-label { background: white; border: 2px solid red; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: red; }
 </style>
 </head>
 <body>
@@ -105,6 +106,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 let clients=[], markers=[], redMarkers=[], routeLine, lastRouteCoords=[], lastRouteClients=[], editingClientId = null, currentStartOption = "gps";
+
 const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize:[25,41], iconAnchor:[12,41] });
 const iconFood = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/3448/3448609.png", iconSize:[38,38], iconAnchor:[19,38] });
 const iconHotel = new L.Icon({ iconUrl: "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ff9900" stroke="white" stroke-width="2"/><text x="50%" y="55%" font-size="18" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold" dominant-baseline="middle">H</text></svg>`), iconSize:[38,38], iconAnchor:[19,38] });
@@ -168,17 +170,33 @@ function renderClientes(){
             div.classList.add('edit-mode');
             div.innerHTML = `<input id="edit_name" value="${c.name||''}" /><input id="edit_address" value="${c.address||''}" /><textarea id="edit_notes">${c.notes||''}</textarea><div style="display:flex; gap:8px"><button class="smallBtn saveBtn" onclick="saveEditClient('${c.id}')">💾</button><button class="smallBtn" onclick="cancelEdit()">❌</button></div>`;
         } else {
-            div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}"> <div style="flex:1"><b>${c.name}</b><br><small style="color: #64748b;">${c.address || 'GPS'}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick='editClient("${c.id}")'>✏️ Editar</button><button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️ Borrar</button></div>`;
+            div.innerHTML=`<div style="display:flex; align-items:center;"><input type="checkbox" id="c${i}" onchange="toggleMarker(${i})"> <div style="flex:1"><b>${c.name}</b><br><small style="color: #64748b;">${c.address || 'GPS'}</small></div></div><div style="margin-top:8px"><button class="smallBtn" onclick='editClient("${c.id}")'>✏️ Editar</button><button class="smallBtn deleteBtn" onclick='deleteClient("${c.id}")'>🗑️ Borrar</button></div>`;
         }
         container.appendChild(div);
         if(c.lat && c.lng){ 
             const defaultIcon = getClientIcon(c);
             let m = L.marker([c.lat,c.lng], {icon: defaultIcon}).addTo(map).bindPopup(c.name);
-            m.on('click', () => { const cb = document.getElementById('c'+i); if(cb){ cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : defaultIcon); } });
-            markers.push(m);
+            
+            // Función para marcar/desmarcar desde el mapa
+            m.on('click', () => { 
+                const cb = document.getElementById('c'+i); 
+                if(cb){ 
+                    cb.checked = !cb.checked; 
+                    m.setIcon(cb.checked ? iconPin : defaultIcon); 
+                } 
+            });
+            markers[i] = m;
         }
     }); 
     document.getElementById('stats').innerHTML=clients.length; 
+}
+
+// Sincroniza el marcador cuando se cambia el checkbox manualmente
+window.toggleMarker = function(i) {
+    const cb = document.getElementById('c'+i);
+    if(markers[i]) {
+        markers[i].setIcon(cb.checked ? iconPin : getClientIcon(clients[i]));
+    }
 }
 
 window.addClient = async function() { 
@@ -208,7 +226,6 @@ window.saveEditClient = async (id) => {
 window.deleteClient = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"clientes",id)); cargarClientes(); } };
 window.deleteRoute = async (id) => { if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
 
-// Calculo de distancia simple
 function getDist(lat1, lon1, lat2, lon2) {
     return Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2));
 }
@@ -220,7 +237,6 @@ window.createRoute = async function(isLoading = false){
     if(currentStartOption==="gps"){ try { const p=await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j)); sLat=p.coords.latitude; sLng=p.coords.longitude; } catch(e) { return alert("Error GPS"); } }
     else { let ad=document.getElementById('startAddress').value.trim(); const c=await geocode(ad); if(!c) return alert("Salida no encontrada"); sLat=c.lat; sLng=c.lng; }
     
-    // 1. Buscamos el punto más lejano matemáticamente para ponerlo al final
     let maxD = -1, farIdx = 0;
     sel.forEach((c, i) => {
         let d = getDist(sLat, sLng, c.lat, c.lng);
@@ -233,14 +249,11 @@ window.createRoute = async function(isLoading = false){
     const strCoords = inputCoords.map(c => `${c[1]},${c[0]}`).join(';');
     
     try {
-        // Usamos source=first y destination=last con el punto más lejano forzado al final de la lista
         const res = await fetch(`https://router.project-osrm.org/trip/v1/driving/${strCoords}?source=first&destination=last&roundtrip=false&overview=full&geometries=geojson`);
         const data = await res.json();
         
         if(data.waypoints) {
             lastRouteCoords = data.waypoints.sort((a, b) => a.waypoint_index - b.waypoint_index).map(w => [w.location[1], w.location[0]]);
-            
-            // Re-mapear para Google Maps
             lastRouteClients = lastRouteCoords.slice(1).map(coord => 
                 sel.find(c => Math.abs(c.lat - coord[0]) < 0.0001 && Math.abs(c.lng - coord[1]) < 0.0001)
             ).filter(c => c);
@@ -262,7 +275,13 @@ window.loadRoute = async function(id){
     const q = query(collection(db, "rutas"), where("userId", "==", auth.currentUser.uid));
     const sn = await getDocs(q); const rd = sn.docs.find(d=>d.id===id); if(!rd) return;
     const d=rd.data(); 
-    clients.forEach((c, i) => { const cb = document.getElementById('c'+i); if(cb) { cb.checked = d.clients.includes(c.id); if(markers[i]) markers[i].setIcon(cb.checked ? iconPin : getClientIcon(c)); } });
+    clients.forEach((c, i) => { 
+        const cb = document.getElementById('c'+i); 
+        if(cb) { 
+            cb.checked = d.clients.includes(c.id); 
+            if(markers[i]) markers[i].setIcon(cb.checked ? iconPin : getClientIcon(c)); 
+        } 
+    });
     window.createRoute(true);
 }
 

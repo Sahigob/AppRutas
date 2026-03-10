@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v4.4 - Full Integration</title>
+<title>Rutas Comerciales PRO v4.5 - Google Maps Fix</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -112,12 +112,6 @@ const iconNormal = new L.Icon({ iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/im
 const iconPin = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[32,32], iconAnchor:[16,32] });
 const iconUser = new L.Icon({ iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png", iconSize:[40,40], iconAnchor:[20,40] });
 
-function getClientIcon(cliente){
-  const text=(cliente.notes||"").toLowerCase();
-  // Mantenemos lógica de iconos personalizados si los hubiera
-  return iconNormal;
-}
-
 let map = L.map('map').setView([40.4168,-3.7038],12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
@@ -163,10 +157,7 @@ function renderClientes(){
             let m = L.marker([c.lat,c.lng], {icon: iconNormal}).addTo(map).bindPopup(c.name);
             m.on('click', () => { 
                 const cb = document.getElementById('c'+i); 
-                if(cb){ 
-                    cb.checked = !cb.checked; 
-                    m.setIcon(cb.checked ? iconPin : iconNormal); 
-                } 
+                if(cb){ cb.checked = !cb.checked; m.setIcon(cb.checked ? iconPin : iconNormal); } 
             });
             markers[i] = m;
         }
@@ -229,9 +220,11 @@ window.createRoute = async function(isLoading = false){
         const data = await res.json();
         if(data.waypoints) {
             lastRouteCoords = data.waypoints.sort((a, b) => a.waypoint_index - b.waypoint_index).map(w => [w.location[1], w.location[0]]);
-            lastRouteClients = lastRouteCoords.slice(1).map(coord => 
-                sel.find(c => Math.abs(c.lat - coord[0]) < 0.0001 && Math.abs(c.lng - coord[1]) < 0.0001)
-            ).filter(c => c);
+            
+            // Mapeo preciso para asegurar que todos los clientes están en la lista de ruta
+            lastRouteClients = lastRouteCoords.slice(1).map(coord => {
+                return sel.find(c => Math.abs(c.lat - coord[0]) < 0.0005 && Math.abs(c.lng - coord[1]) < 0.0005);
+            }).filter(c => c);
 
             if(routeLine) map.removeLayer(routeLine); redMarkers.forEach(m=>map.removeLayer(m)); redMarkers=[];
             routeLine=L.geoJSON(data.trips[0].geometry,{style:{color:'#0ea5e9',weight:5}}).addTo(map); 
@@ -244,14 +237,27 @@ window.createRoute = async function(isLoading = false){
     } catch(e) { console.error(e); }
 }
 
+// CORRECCIÓN PARA GOOGLE MAPS: Asegura que se envíen TODOS los puntos como coordenadas
 window.enviarRutaGoogleOrdenEstricto = function(soloListado) {
-    if (lastRouteCoords.length < 2) return alert("Crea una ruta azul primero");
-    let origin = (currentStartOption === "gps") ? "" : `${lastRouteCoords[0][0]},${lastRouteCoords[0][1]}`;
-    let lastC = lastRouteClients[lastRouteClients.length - 1];
-    let destination = `${lastC.lat},${lastC.lng}`;
-    let waypoints = lastRouteClients.slice(0, -1).map(c => `${c.lat},${c.lng}`).join('|');
-    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
+    if (lastRouteClients.length === 0) return alert("Crea una ruta azul primero");
+    
+    // Punto inicial: Coordenadas de salida (0 en la lista de coordenadas de ruta)
+    let sLat = lastRouteCoords[0][0];
+    let sLng = lastRouteCoords[0][1];
+    let originStr = (currentStartOption === "gps") ? "" : `${sLat},${sLng}`;
+    
+    // Destino: El último cliente de la lista optimizada
+    let lastClient = lastRouteClients[lastRouteClients.length - 1];
+    let destStr = `${lastClient.lat},${lastClient.lng}`;
+    
+    // Waypoints: Todos los clientes intermedios (del primero al penúltimo)
+    let waypointsStr = lastRouteClients.slice(0, -1).map(c => `${c.lat},${c.lng}`).join('|');
+    
+    // Construcción de URL usando la API de Google Maps Universal
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&waypoints=${waypointsStr}&travelmode=driving`;
+    
     if(!soloListado) url += "&dir_action=navigate";
+    
     window.open(url, '_blank');
 }
 
@@ -293,7 +299,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('startOption').onchange = (e) => document.getElementById('startAddress').style.display = e.target.value === "manual" ? "block" : "none";
     document.getElementById('btnOpenGoogle').onclick = () => {
         const addr = document.getElementById('address').value;
-        const url = addr ? `https://www.google.com/maps/search/${encodeURIComponent(addr)}` : `https://www.google.com/maps`;
+        const url = addr ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}` : `https://www.google.com/maps/`;
         window.open(url, '_blank');
     };
 });

@@ -45,6 +45,39 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: s
 .routeItem { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px; background:#f1f5f9; padding:8px 12px; border-radius:10px; border:1px solid #e2e8f0; }
 .hidden { display: none; }
 .marker-label { background: white; border: 2px solid red; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: red; }
+
+/* --- CSS AÑADIDO PARA RECUPERAR ICONOS POI (RESTAURANTES / HOTELES) --- */
+
+.leaflet-pane img,
+.leaflet-marker-pane img,
+.leaflet-overlay-pane img {
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.leaflet-pane svg,
+.leaflet-overlay-pane svg {
+    visibility: visible !important;
+}
+
+.leaflet-control-attribution {
+    font-size:10px;
+}
+
+.leaflet-tile-pane img {
+    image-rendering: auto;
+}
+
+/* asegura que nada del layout oculte POI */
+#map img {
+    max-width: none !important;
+}
+
+/* evita que panel tape iconos del mapa */
+#panel {
+    position: relative;
+    z-index: 1000;
+}
 </style>
 </head>
 <body>
@@ -239,18 +272,13 @@ window.createRoute = async function(isLoading = false){
 window.enviarRutaGoogleOrdenEstricto = function() {
     if (lastRouteCoords.length < 2) return alert("Crea una ruta azul primero");
 
-    // Buscamos los objetos cliente correspondientes a los puntos de la ruta
-    // El origen (índice 0)
     let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
     
-    // El destino final (último punto)
     let lastClient = lastRouteClients[lastRouteClients.length - 1];
     let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastRouteCoords[lastRouteCoords.length - 1][0]},${lastRouteCoords[lastRouteCoords.length - 1][1]}`;
     
-    // Puntos intermedios (waypoints)
     let waypoints = "";
     if (lastRouteClients.length > 1) {
-        // Mapeamos los clientes intermedios a su dirección o coord
         waypoints = lastRouteClients.slice(0, -1).map(c => {
             return c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`;
         }).join('|');
@@ -260,7 +288,6 @@ window.enviarRutaGoogleOrdenEstricto = function() {
     window.open(url, '_blank');
 }
 
-// MODIFICADO: También para el botón "Optimizado"
 window.openInGoogleMaps = function() { 
     if (lastRouteCoords.length < 2) return alert("Crea o carga una ruta"); 
     
@@ -337,7 +364,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('startOption').onchange = (e) => document.getElementById('startAddress').style.display = e.target.value === "manual" ? "block" : "none";
     document.getElementById('btnOpenGoogle').onclick = () => {
         const addr = document.getElementById('address').value;
-        const url = addr ? `https://www.google.com/maps/dir/?api=1&destination=$0{encodeURIComponent(addr)}` : `www.google.com/maps/dir/?api=1`;
+        const url = addr ? `https://www.google.com/maps/search/${encodeURIComponent(addr)}` : `https://www.google.com/maps`;
         window.open(url, '_blank');
     };
 });

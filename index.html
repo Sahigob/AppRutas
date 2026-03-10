@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v4.5 - Google Maps Fix</title>
+<title>Rutas Comerciales PRO v4.6 - Persistence Fix</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -98,7 +98,7 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: s
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where, getDoc } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-auth.js";
 
 const firebaseConfig = { apiKey: "AIzaSyByi9lTT4kN4YbD8cneKLmTm05RzCAgPhI", authDomain: "organizador-de-visitas-f10ad.firebaseapp.com", projectId: "organizador-de-visitas-f10ad", storageBucket: "organizador-de-visitas-f10ad.firebasestorage.app", messagingSenderId: "737024476908", appId: "1:737024476908:web:09cf2cc99ac0b7352f07c9" };
@@ -220,11 +220,9 @@ window.createRoute = async function(isLoading = false){
         const data = await res.json();
         if(data.waypoints) {
             lastRouteCoords = data.waypoints.sort((a, b) => a.waypoint_index - b.waypoint_index).map(w => [w.location[1], w.location[0]]);
-            
-            // Mapeo preciso para asegurar que todos los clientes están en la lista de ruta
-            lastRouteClients = lastRouteCoords.slice(1).map(coord => {
-                return sel.find(c => Math.abs(c.lat - coord[0]) < 0.0005 && Math.abs(c.lng - coord[1]) < 0.0005);
-            }).filter(c => c);
+            lastRouteClients = lastRouteCoords.slice(1).map(coord => 
+                sel.find(c => Math.abs(c.lat - coord[0]) < 0.0008 && Math.abs(c.lng - coord[1]) < 0.0008)
+            ).filter(c => c);
 
             if(routeLine) map.removeLayer(routeLine); redMarkers.forEach(m=>map.removeLayer(m)); redMarkers=[];
             routeLine=L.geoJSON(data.trips[0].geometry,{style:{color:'#0ea5e9',weight:5}}).addTo(map); 
@@ -237,27 +235,14 @@ window.createRoute = async function(isLoading = false){
     } catch(e) { console.error(e); }
 }
 
-// CORRECCIÓN PARA GOOGLE MAPS: Asegura que se envíen TODOS los puntos como coordenadas
 window.enviarRutaGoogleOrdenEstricto = function(soloListado) {
     if (lastRouteClients.length === 0) return alert("Crea una ruta azul primero");
-    
-    // Punto inicial: Coordenadas de salida (0 en la lista de coordenadas de ruta)
-    let sLat = lastRouteCoords[0][0];
-    let sLng = lastRouteCoords[0][1];
-    let originStr = (currentStartOption === "gps") ? "" : `${sLat},${sLng}`;
-    
-    // Destino: El último cliente de la lista optimizada
+    let originStr = (currentStartOption === "gps") ? "" : `${lastRouteCoords[0][0]},${lastRouteCoords[0][1]}`;
     let lastClient = lastRouteClients[lastRouteClients.length - 1];
     let destStr = `${lastClient.lat},${lastClient.lng}`;
-    
-    // Waypoints: Todos los clientes intermedios (del primero al penúltimo)
     let waypointsStr = lastRouteClients.slice(0, -1).map(c => `${c.lat},${c.lng}`).join('|');
-    
-    // Construcción de URL usando la API de Google Maps Universal
     let url = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&waypoints=${waypointsStr}&travelmode=driving`;
-    
     if(!soloListado) url += "&dir_action=navigate";
-    
     window.open(url, '_blank');
 }
 
@@ -267,11 +252,37 @@ async function cargarRutas(){
     const snapshot = await getDocs(q); const container = document.getElementById('routeList'); container.innerHTML=""; 
     snapshot.docs.forEach(docSnap => {
         let div=document.createElement('div'); div.className="routeItem";
-        div.innerHTML=`<span>📅 ${docSnap.data().date || 'S/F'}</span><div><button class="smallBtn deleteBtn" onclick="deleteRoute('${docSnap.id}')">🗑️</button></div>`;
+        div.innerHTML=`<span>📅 ${docSnap.data().date || 'S/F'}</span><div><button class="smallBtn" onclick="loadRoute('${docSnap.id}')">👁️ Ver</button><button class="smallBtn deleteBtn" onclick="deleteRoute('${docSnap.id}')">🗑️</button></div>`;
         container.appendChild(div);
     });
 }
-window.deleteRoute = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
+
+// CORRECCIÓN CLAVE: Función para cargar la ruta guardada
+window.loadRoute = async (id) => {
+    const docRef = doc(db, "rutas", id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        const rutaData = docSnap.data();
+        // 1. Desmarcar todo primero
+        clients.forEach((c, i) => {
+            const cb = document.getElementById('c'+i);
+            if(cb) cb.checked = false;
+            if(markers[i]) markers[i].setIcon(iconNormal);
+        });
+        // 2. Marcar solo los de la ruta
+        clients.forEach((c, i) => {
+            if(rutaData.clients.includes(c.id)) {
+                const cb = document.getElementById('c'+i);
+                if(cb) cb.checked = true;
+                if(markers[i]) markers[i].setIcon(iconPin);
+            }
+        });
+        // 3. Generar el trazado visual
+        window.createRoute(true);
+    }
+};
+
+window.deleteRoute = async (id) => { if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
 
 async function showUserPosition() {
     try {
@@ -299,7 +310,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('startOption').onchange = (e) => document.getElementById('startAddress').style.display = e.target.value === "manual" ? "block" : "none";
     document.getElementById('btnOpenGoogle').onclick = () => {
         const addr = document.getElementById('address').value;
-        const url = addr ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}` : `https://www.google.com/maps/`;
+        const url = addr ? `http://googleusercontent.com/maps.google.com/9{encodeURIComponent(addr)}` : `https://www.google.com/maps/dir/`;
         window.open(url, '_blank');
     };
 });

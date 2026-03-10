@@ -73,8 +73,7 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: s
       <div class="coord-container">
           <small style="color: #9a3412; font-weight: bold;">2. Pega aquí las coordenadas de Google:</small>
           <div class="coord-row">
-              <input id="manualLat" placeholder="Latitud" />
-              <input id="manualLng" placeholder="Longitud" />
+              <input id="manualCoords" placeholder="Ej: 40.416775, -3.703790" />
           </div>
       </div>
       <textarea id="notes" placeholder="Notas (Hotel, Restaurante...)" rows="2" style="margin-top:10px"></textarea>
@@ -129,7 +128,6 @@ function getClientIcon(cliente){
   return iconNormal;
 }
 
-// Inicialización segura del mapa
 let map;
 function initMap() {
     if (map) return;
@@ -197,15 +195,35 @@ window.syncMarker = function(i) {
 }
 
 window.addClient = async function() { 
-    const inName=document.getElementById('name'), inAddr=document.getElementById('address'), inLat=document.getElementById('manualLat'), inLng=document.getElementById('manualLng'), inNotes=document.getElementById('notes');
-    const name=inName.value.trim(), address=inAddr.value.trim(), mLat=inLat.value.trim(), mLng=inLng.value.trim();
+    const inName=document.getElementById('name'), 
+          inAddr=document.getElementById('address'), 
+          inCoords=document.getElementById('manualCoords'), 
+          inNotes=document.getElementById('notes');
+
+    const name=inName.value.trim(), address=inAddr.value.trim(), coords=inCoords.value.trim();
+
     if(!name) return alert("El nombre es obligatorio");
     let finalLat, finalLng;
-    if(mLat && mLng) { finalLat = parseFloat(mLat.replace(',', '.')); finalLng = parseFloat(mLng.replace(',', '.')); }
-    else if(address) { const co=await geocode(address); if(!co) return alert("⚠️ Dirección no encontrada."); finalLat=co.lat; finalLng=co.lng; }
-    else { try { const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej)); finalLat = pos.coords.latitude; finalLng = pos.coords.longitude; } catch(e) { return alert("GPS necesario"); } }
+
+    if(coords){
+        let parts = coords.replace(',', ' ').split(/\s+/);
+        if(parts.length >= 2){
+            finalLat = parseFloat(parts[0]);
+            finalLng = parseFloat(parts[1]);
+        }
+    } else if(address) { 
+        const co=await geocode(address); 
+        if(!co) return alert("⚠️ Dirección no encontrada."); 
+        finalLat=co.lat; finalLng=co.lng; 
+    } else { 
+        try { 
+            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej)); 
+            finalLat = pos.coords.latitude; finalLng = pos.coords.longitude; 
+        } catch(e) { return alert("GPS necesario"); } 
+    }
+
     await addDoc(collection(db, "clientes"), { name, address, lat: finalLat, lng: finalLng, notes: inNotes.value, userId: auth.currentUser.uid }); 
-    inName.value=""; inAddr.value=""; inLat.value=""; inLng.value=""; inNotes.value=""; cargarClientes();
+    inName.value=""; inAddr.value=""; inCoords.value=""; inNotes.value=""; cargarClientes();
 }
 
 window.editClient = (id) => { editingClientId = id; renderClientes(); };
@@ -220,7 +238,6 @@ window.saveEditClient = async (id) => {
 window.deleteClient = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"clientes",id)); cargarClientes(); } };
 window.deleteRoute = async (id) => { if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
 
-// --- LÓGICA DE ORDENACIÓN POR CERCANÍA ---
 window.createRoute = async function(isLoading = false){ 
     let sel=clients.filter((c,i)=>document.getElementById('c'+i)?.checked); if(sel.length<1) return alert("Selecciona clientes"); 
     currentStartOption = document.getElementById('startOption').value;
@@ -228,7 +245,6 @@ window.createRoute = async function(isLoading = false){
     if(currentStartOption==="gps"){ try { const p=await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j)); sLat=p.coords.latitude; sLng=p.coords.longitude; } catch(e) { return alert("Error GPS"); } }
     else { let ad=document.getElementById('startAddress').value.trim(); const c=await geocode(ad); if(!c) return alert("Salida no encontrada"); sLat=c.lat; sLng=c.lng; }
     
-    // 1. Ordenar clientes por distancia lineal al punto de salida (Cercano a Lejano)
     sel.sort((a, b) => {
         const distA = Math.sqrt(Math.pow(a.lat - sLat, 2) + Math.pow(a.lng - sLng, 2));
         const distB = Math.sqrt(Math.pow(b.lat - sLat, 2) + Math.pow(b.lng - sLng, 2));
@@ -237,36 +253,19 @@ window.createRoute = async function(isLoading = false){
 
     const inputCoords = [[sLat,sLng],...sel.map(c=>[c.lat,c.lng])];
     const strCoords = inputCoords.map(c => `${c[1]},${c[0]}`).join(';');
-    
     try {
-        // Usamos source=first y destination=any para que OSRM respete el inicio y ordene el resto
         const res = await fetch(`https://router.project-osrm.org/trip/v1/driving/${strCoords}?source=first&roundtrip=false&overview=full&geometries=geojson`);
         const data = await res.json();
-        
         if(data.trips) {
-            // Ordenamos los puntos según el índice que nos devuelve OSRM
             lastRouteCoords = data.waypoints.sort((a, b) => a.waypoint_index - b.waypoint_index).map(w => [w.location[1], w.location[0]]);
-            
-            // Mapeamos los clientes en el orden de la ruta (omitiendo el punto de salida)
-            lastRouteClients = lastRouteCoords.slice(1).map(coord => 
-                sel.find(c => Math.abs(c.lat - coord[0]) < 0.0008 && Math.abs(c.lng - coord[1]) < 0.0008)
-            ).filter(c => c);
-
-            if(routeLine) map.removeLayer(routeLine); 
-            redMarkers.forEach(m=>map.removeLayer(m)); redMarkers=[];
-            
+            lastRouteClients = lastRouteCoords.slice(1).map(coord => sel.find(c => Math.abs(c.lat - coord[0]) < 0.0008 && Math.abs(c.lng - coord[1]) < 0.0008)).filter(c => c);
+            if(routeLine) map.removeLayer(routeLine); redMarkers.forEach(m=>map.removeLayer(m)); redMarkers=[];
             routeLine=L.geoJSON(data.trips[0].geometry,{style:{color:'#0ea5e9',weight:5}}).addTo(map); 
             map.fitBounds(routeLine.getBounds());
-            
-            // Dibujar números de orden en el mapa
             lastRouteCoords.slice(1).forEach((c, idx) => {
                 redMarkers.push(L.circleMarker(c,{radius:10,color:'red',fillColor:'white',fillOpacity:1}).addTo(map).bindTooltip(""+(idx+1), {permanent:true, direction:'center', className:'marker-label'}));
             });
-            
-            if(!isLoading) { 
-                await addDoc(collection(db, "rutas"),{date:document.getElementById('routeDate').value || "S/F", clients:sel.map(c=>c.id), userId: auth.currentUser.uid }); 
-                cargarRutas(); 
-            }
+            if(!isLoading) { await addDoc(collection(db, "rutas"),{date:document.getElementById('routeDate').value || "S/F", clients:sel.map(c=>c.id), userId: auth.currentUser.uid }); cargarRutas(); }
         }
     } catch(e) { console.error(e); }
 }
@@ -288,14 +287,9 @@ window.loadRoute = async (id) => {
 window.enviarRutaGoogleMaps = function() {
     if (lastRouteCoords.length < 2) return alert("Crea una ruta primero");
     let origin = (currentStartOption === "gps") ? "My+Location" : encodeURIComponent(document.getElementById('startAddress').value);
-    
-    // El destino final es el último cliente de la lista ordenada
     let lastClient = lastRouteClients[lastRouteClients.length - 1];
     let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastRouteCoords[lastRouteCoords.length - 1][0]},${lastRouteCoords[lastRouteCoords.length - 1][1]}`;
-    
-    // Los puntos intermedios
     let waypoints = lastRouteClients.slice(0, -1).map(c => c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`).join('|');
-    
     window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, '_blank');
 }
 

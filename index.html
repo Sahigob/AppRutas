@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v4.0 - Optimización Real</title>
+<title>Rutas Comerciales PRO v4.0 - Optimización por Distancia</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -208,6 +208,11 @@ window.saveEditClient = async (id) => {
 window.deleteClient = async (id) => { if(confirm("¿Borrar?")) { await deleteDoc(doc(db,"clientes",id)); cargarClientes(); } };
 window.deleteRoute = async (id) => { if(confirm("¿Borrar ruta?")) { await deleteDoc(doc(db,"rutas",id)); cargarRutas(); } };
 
+// Función para calcular distancia simple (Pitagórica) para encontrar el destino más lejano
+function getSimpleDist(lat1, lon1, lat2, lon2) {
+    return Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2));
+}
+
 window.createRoute = async function(isLoading = false){ 
     let sel=clients.filter((c,i)=>document.getElementById('c'+i)?.checked); if(sel.length<1) return alert("Selecciona clientes"); 
     currentStartOption = document.getElementById('startOption').value;
@@ -215,30 +220,42 @@ window.createRoute = async function(isLoading = false){
     if(currentStartOption==="gps"){ try { const p=await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j)); sLat=p.coords.latitude; sLng=p.coords.longitude; } catch(e) { return alert("Error GPS"); } }
     else { let ad=document.getElementById('startAddress').value.trim(); const c=await geocode(ad); if(!c) return alert("Salida no encontrada"); sLat=c.lat; sLng=c.lng; }
     
-    // IMPORTANTE: Ponemos todos los puntos juntos para que el TRIP optimice el mejor recorrido.
-    const inputCoords = [[sLat,sLng],...sel.map(c=>[c.lat,c.lng])];
+    // LOGICA: Buscamos el cliente que esté matemáticamente más lejos del origen para que sea el destino final.
+    let maxDist = -1;
+    let farthestIdx = 0;
+    sel.forEach((c, idx) => {
+        let d = getSimpleDist(sLat, sLng, c.lat, c.lng);
+        if (d > maxDist) { maxDist = d; farthestIdx = idx; }
+    });
+
+    // Reordenamos temporalmente: el origen, los demás clientes, y el más lejano al final.
+    let farthestClient = sel.splice(farthestIdx, 1)[0];
+    const inputCoords = [[sLat,sLng], ...sel.map(c=>[c.lat,c.lng]), [farthestClient.lat, farthestClient.lng]];
     const strCoords = inputCoords.map(c => `${c[1]},${c[0]}`).join(';');
     
     try {
-        // source=first obliga a que empiece en Madrid, pero no obliga a que termine en el último punto seleccionado
-        const res = await fetch(`https://router.project-osrm.org/trip/v1/driving/${strCoords}?source=first&overview=full&geometries=geojson`);
+        // source=first & destination=last garantiza que empiece en Madrid y termine en el punto más lejano.
+        const res = await fetch(`https://router.project-osrm.org/trip/v1/driving/${strCoords}?source=first&destination=last&overview=full&geometries=geojson`);
         const data = await res.json();
         if(data.trips) {
-            // Guardamos el orden real calculado por cercanía
             lastRouteCoords = data.waypoints.sort((a, b) => a.waypoint_index - b.waypoint_index).map(w => [w.location[1], w.location[0]]);
 
             if(routeLine) map.removeLayer(routeLine); redMarkers.forEach(m=>map.removeLayer(m)); redMarkers=[];
             routeLine=L.geoJSON(data.trips[0].geometry,{style:{color:'#0ea5e9',weight:5}}).addTo(map); 
             map.fitBounds(routeLine.getBounds());
             
-            // Dibujamos el orden en el mapa para confirmar
             lastRouteCoords.forEach((c, idx) => {
-                if(idx > 0) redMarkers.push(L.circleMarker(c,{radius:8,color:'red',fillColor:'white',fillOpacity:1}).addTo(map).bindTooltip(""+idx, {permanent:true, direction:'center', className:'marker-label'}));
+                if(idx > 0) redMarkers.push(L.circleMarker(c,{radius:9,color:'red',fillColor:'white',fillOpacity:1}).addTo(map).bindTooltip(""+idx, {permanent:true, direction:'center', className:'marker-label'}));
             });
 
-            if(!isLoading) { await addDoc(collection(db, "rutas"),{date:document.getElementById('routeDate').value || "S/F", clients:sel.map(c=>c.id), userId: auth.currentUser.uid }); cargarRutas(); }
+            if(!isLoading) { 
+                // Restauramos sel para guardar en Firebase con todos los ids
+                let fullIds = [...sel.map(c=>c.id), farthestClient.id];
+                await addDoc(collection(db, "rutas"),{date:document.getElementById('routeDate').value || "S/F", clients: fullIds, userId: auth.currentUser.uid }); 
+                cargarRutas(); 
+            }
         }
-    } catch(e) { console.log(e); }
+    } catch(e) { console.error(e); }
 }
 
 window.loadRoute = async function(id){ 
@@ -249,26 +266,16 @@ window.loadRoute = async function(id){
     window.createRoute(true);
 }
 
-// CORRECCIÓN NAVEGACIÓN: Enviar a Google los puntos YA ORDENADOS por cercanía
 window.navGoogle = (soloListado) => {
     if(lastRouteCoords.length < 2) return alert("Crea primero la ruta");
-    
-    // Origen real (Madrid o GPS)
     let origin = (currentStartOption === "gps") ? "My+Location" : encodeURIComponent(document.getElementById('startAddress').value);
-    
-    // El destino final ahora es el que el optimizador puso al final (ej: Valencia)
     let finalIdx = lastRouteCoords.length - 1;
     let destination = `${lastRouteCoords[finalIdx][0]},${lastRouteCoords[finalIdx][1]}`;
-    
-    // Las paradas intermedias (ej: Alcorcón, Albacete, Alicante)
     let waypoints = lastRouteCoords.slice(1, finalIdx).map(c => `${c[0]},${c[1]}`).join('|');
-    
     let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
     if(waypoints) url += `&waypoints=${waypoints}`;
     url += "&travelmode=driving";
-
     if(!soloListado) url += "&dir_action=navigate";
-    
     window.open(url, '_blank');
 };
 

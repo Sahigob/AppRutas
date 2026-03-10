@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Rutas Comerciales PRO v4.6 - Persistence Fix</title>
+<title>Rutas Comerciales PRO v4.7 - Address Priority Fix</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
@@ -235,15 +235,46 @@ window.createRoute = async function(isLoading = false){
     } catch(e) { console.error(e); }
 }
 
-window.enviarRutaGoogleOrdenEstricto = function(soloListado) {
-    if (lastRouteClients.length === 0) return alert("Crea una ruta azul primero");
-    let originStr = (currentStartOption === "gps") ? "" : `${lastRouteCoords[0][0]},${lastRouteCoords[0][1]}`;
+// MODIFICADO: Prioriza dirección de texto para precisión de número de portal
+window.enviarRutaGoogleOrdenEstricto = function() {
+    if (lastRouteCoords.length < 2) return alert("Crea una ruta azul primero");
+
+    // Buscamos los objetos cliente correspondientes a los puntos de la ruta
+    // El origen (índice 0)
+    let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
+    
+    // El destino final (último punto)
     let lastClient = lastRouteClients[lastRouteClients.length - 1];
-    let destStr = `${lastClient.lat},${lastClient.lng}`;
-    let waypointsStr = lastRouteClients.slice(0, -1).map(c => `${c.lat},${c.lng}`).join('|');
-    let url = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&waypoints=${waypointsStr}&travelmode=driving`;
-    if(!soloListado) url += "&dir_action=navigate";
+    let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastRouteCoords[lastRouteCoords.length - 1][0]},${lastRouteCoords[lastRouteCoords.length - 1][1]}`;
+    
+    // Puntos intermedios (waypoints)
+    let waypoints = "";
+    if (lastRouteClients.length > 1) {
+        // Mapeamos los clientes intermedios a su dirección o coord
+        waypoints = lastRouteClients.slice(0, -1).map(c => {
+            return c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`;
+        }).join('|');
+    }
+
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
     window.open(url, '_blank');
+}
+
+// MODIFICADO: También para el botón "Optimizado"
+window.openInGoogleMaps = function() { 
+    if (lastRouteCoords.length < 2) return alert("Crea o carga una ruta"); 
+    
+    let origin = (currentStartOption === "gps") ? "" : encodeURIComponent(document.getElementById('startAddress').value);
+    
+    let lastClient = lastRouteClients[lastRouteClients.length - 1];
+    let destination = (lastClient && lastClient.address) ? encodeURIComponent(lastClient.address) : `${lastRouteCoords[lastRouteCoords.length - 1][0]},${lastRouteCoords[lastRouteCoords.length - 1][1]}`;
+    
+    let waypoints = lastRouteClients.slice(0, -1).map(c => {
+        return c.address ? encodeURIComponent(c.address) : `${c.lat},${c.lng}`;
+    }).join('|');
+
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`;
+    window.open(url, '_blank'); 
 }
 
 async function cargarRutas(){ 
@@ -257,19 +288,16 @@ async function cargarRutas(){
     });
 }
 
-// CORRECCIÓN CLAVE: Función para cargar la ruta guardada
 window.loadRoute = async (id) => {
     const docRef = doc(db, "rutas", id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
         const rutaData = docSnap.data();
-        // 1. Desmarcar todo primero
         clients.forEach((c, i) => {
             const cb = document.getElementById('c'+i);
             if(cb) cb.checked = false;
             if(markers[i]) markers[i].setIcon(iconNormal);
         });
-        // 2. Marcar solo los de la ruta
         clients.forEach((c, i) => {
             if(rutaData.clients.includes(c.id)) {
                 const cb = document.getElementById('c'+i);
@@ -277,7 +305,6 @@ window.loadRoute = async (id) => {
                 if(markers[i]) markers[i].setIcon(iconPin);
             }
         });
-        // 3. Generar el trazado visual
         window.createRoute(true);
     }
 };
@@ -299,8 +326,8 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('btnLogout').onclick = () => signOut(auth);
     document.getElementById('btnAddClient').onclick = window.addClient;
     document.getElementById('btnCreateRoute').onclick = () => window.createRoute(false);
-    document.getElementById('btnRutaOrdenEstricto').onclick = () => window.enviarRutaGoogleOrdenEstricto(true);
-    document.getElementById('btnGoogleMaps').onclick = () => window.enviarRutaGoogleOrdenEstricto(false);
+    document.getElementById('btnRutaOrdenEstricto').onclick = () => window.enviarRutaGoogleOrdenEstricto();
+    document.getElementById('btnGoogleMaps').onclick = () => window.openInGoogleMaps();
     document.getElementById('btnWaze').onclick = () => {
         if(lastRouteCoords.length < 2) return alert("Crea ruta");
         const dest = lastRouteCoords[lastRouteCoords.length-1];
@@ -310,7 +337,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById('startOption').onchange = (e) => document.getElementById('startAddress').style.display = e.target.value === "manual" ? "block" : "none";
     document.getElementById('btnOpenGoogle').onclick = () => {
         const addr = document.getElementById('address').value;
-        const url = addr ? `http://googleusercontent.com/maps.google.com/9{encodeURIComponent(addr)}` : `https://www.google.com/maps/dir/`;
+        const url = addr ? `https://www.google.com/maps/dir/?api=1&destination=$0{encodeURIComponent(addr)}` : `www.google.com/maps/dir/?api=1`;
         window.open(url, '_blank');
     };
 });

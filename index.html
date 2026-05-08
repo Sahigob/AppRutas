@@ -70,9 +70,6 @@ input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: s
       <input id="name" placeholder="Nombre cliente" />
       <input id="address" placeholder="Dirección para buscar..." />
       <button id="btnOpenGoogle" class="btn-google-helper"><i class="fab fa-google"></i> 1. Buscar coordenadas en Google</button>
-      <button id="btnGetCoords" class="btn-google-helper">
-<i class="fas fa-location-crosshairs"></i> Obtener coordenadas GPS
-</button>
       <div class="coord-container">
           <small style="color: #9a3412; font-weight: bold;">2. Pega aquí las coordenadas de Google:</small>
           <div class="coord-row">
@@ -336,30 +333,6 @@ document.addEventListener("DOMContentLoaded",()=>{
         if(!addr) return alert("Escribe primero una dirección o nombre de negocio");
         window.open(`https://www.google.com/maps/search/${encodeURIComponent(addr)}`, '_blank');
     };
-    document.getElementById('btnGetCoords').onclick = async () => {
-    const addr = document.getElementById('address').value.trim();
-    if(!addr) return alert("Escribe una dirección");
-
-    try {
-        const res = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`
-        );
-
-        const data = await res.json();
-
-        if(data.length === 0){
-            return alert("No se encontraron coordenadas");
-        }
-
-        const lat = parseFloat(data[0].lat).toFixed(4);
-        const lon = parseFloat(data[0].lon).toFixed(4);
-
-        document.getElementById('manualCoords').value = `${lat}, ${lon}`;
-
-    } catch(e){
-        alert("Error al obtener coordenadas");
-    }
-};
 });
 </script>
 </body>
